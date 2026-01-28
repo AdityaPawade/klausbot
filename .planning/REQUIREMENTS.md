@@ -99,51 +99,51 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | TBD | Pending |
-| INFRA-02 | TBD | Pending |
-| INFRA-03 | TBD | Pending |
-| INFRA-04 | TBD | Pending |
-| INFRA-05 | TBD | Pending |
-| COMM-01 | TBD | Pending |
-| COMM-02 | TBD | Pending |
-| COMM-03 | TBD | Pending |
-| COMM-04 | TBD | Pending |
-| COMM-05 | TBD | Pending |
-| COMM-06 | TBD | Pending |
-| MEM-01 | TBD | Pending |
-| MEM-02 | TBD | Pending |
-| MEM-03 | TBD | Pending |
-| MEM-04 | TBD | Pending |
-| MEM-05 | TBD | Pending |
-| MEM-06 | TBD | Pending |
-| MEM-07 | TBD | Pending |
-| IDEN-01 | TBD | Pending |
-| IDEN-02 | TBD | Pending |
-| IDEN-03 | TBD | Pending |
-| IDEN-04 | TBD | Pending |
-| IDEN-05 | TBD | Pending |
-| IDEN-06 | TBD | Pending |
-| CRON-01 | TBD | Pending |
-| CRON-02 | TBD | Pending |
-| CRON-03 | TBD | Pending |
-| CRON-04 | TBD | Pending |
-| CRON-05 | TBD | Pending |
-| SKILL-01 | TBD | Pending |
-| SKILL-02 | TBD | Pending |
-| SKILL-03 | TBD | Pending |
-| SKILL-04 | TBD | Pending |
-| SKILL-05 | TBD | Pending |
-| EVOL-01 | TBD | Pending |
-| EVOL-02 | TBD | Pending |
-| EVOL-03 | TBD | Pending |
-| EVOL-04 | TBD | Pending |
-| EVOL-05 | TBD | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| COMM-01 | Phase 1 | Pending |
+| COMM-02 | Phase 1 | Pending |
+| COMM-03 | Phase 1 | Pending |
+| COMM-04 | Phase 1 | Pending |
+| COMM-05 | Phase 6 | Pending |
+| COMM-06 | Phase 6 | Pending |
+| MEM-01 | Phase 2 | Pending |
+| MEM-02 | Phase 2 | Pending |
+| MEM-03 | Phase 2 | Pending |
+| MEM-04 | Phase 2 | Pending |
+| MEM-05 | Phase 2 | Pending |
+| MEM-06 | Phase 2 | Pending |
+| MEM-07 | Phase 2 | Pending |
+| IDEN-01 | Phase 3 | Pending |
+| IDEN-02 | Phase 3 | Pending |
+| IDEN-03 | Phase 3 | Pending |
+| IDEN-04 | Phase 3 | Pending |
+| IDEN-05 | Phase 3 | Pending |
+| IDEN-06 | Phase 3 | Pending |
+| CRON-01 | Phase 5 | Pending |
+| CRON-02 | Phase 5 | Pending |
+| CRON-03 | Phase 5 | Pending |
+| CRON-04 | Phase 5 | Pending |
+| CRON-05 | Phase 5 | Pending |
+| SKILL-01 | Phase 4 | Pending |
+| SKILL-02 | Phase 4 | Pending |
+| SKILL-03 | Phase 4 | Pending |
+| SKILL-04 | Phase 4 | Pending |
+| SKILL-05 | Phase 4 | Pending |
+| EVOL-01 | Phase 5 | Pending |
+| EVOL-02 | Phase 5 | Pending |
+| EVOL-03 | Phase 5 | Pending |
+| EVOL-04 | Phase 1 | Pending |
+| EVOL-05 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35 (pending roadmap)
+- Mapped to phases: 35
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-28*
-*Last updated: 2026-01-28 after initial definition*
+*Last updated: 2026-01-28 after roadmap creation*
