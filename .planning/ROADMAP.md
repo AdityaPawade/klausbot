@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Foundation
-**Goal**: Gateway daemon runs 24/7, handles Telegram messages, enforces security boundaries, auto-commits all changes to Git
+**Goal**: Gateway daemon (klausbot) runs 24/7, handles Telegram messages, enforces security via moltbot-style pairing, persists queue across restarts
 **Depends on**: Nothing (first phase)
 **Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, COMM-01, COMM-02, COMM-03, COMM-04, EVOL-04
 **Success Criteria** (what must be TRUE):
@@ -31,11 +31,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Processing indicator ("Thinking...") appears while Claude executes
   4. Errors surfaced to user with actionable context (never silent failures)
   5. Gateway survives restart without losing pending messages
-**Plans**: TBD
+**Plans**: 7 plans in 6 waves
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Project setup: npm, TypeScript, config, logger
+- [ ] 01-02-PLAN.md — Telegram bot core with grammY plugins
+- [ ] 01-03-PLAN.md — Message queue and Claude Code spawner
+- [ ] 01-04-PLAN.md — Pairing flow and security middleware
+- [ ] 01-05-PLAN.md — Gateway integration: wire all components
+- [ ] 01-06-PLAN.md — Deployment: install wizard, systemd, Docker
+- [ ] 01-07-PLAN.md — End-to-end verification (human checkpoint)
 
 ### Phase 2: Core Loop
 **Goal**: User message triggers Claude Code session that reads/writes memory files and returns response
@@ -123,7 +128,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/7 | Planned | - |
 | 2. Core Loop | 0/TBD | Not started | - |
 | 3. Identity | 0/TBD | Not started | - |
 | 4. Skills | 0/TBD | Not started | - |
