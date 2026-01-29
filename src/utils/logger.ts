@@ -1,38 +1,79 @@
-import pino, { Logger } from 'pino';
+import pino, { Logger, destination, multistream } from 'pino';
+import { createWriteStream, mkdirSync } from 'fs';
+import { join } from 'path';
+import pinoPretty from 'pino-pretty';
 import { config } from '../config/index.js';
 
 /** Base logger instance (lazy-initialized) */
 let _logger: Logger | null = null;
 
+/** Ensure logs directory exists */
+function ensureLogsDir(): string {
+  const logsDir = join(process.cwd(), 'logs');
+  try {
+    mkdirSync(logsDir, { recursive: true });
+  } catch {
+    // ignore
+  }
+  return logsDir;
+}
+
 /**
  * Get or create the base logger instance
  * Lazy initialization ensures config is loaded before logger is created
  * Uses pino-pretty for human-readable output in TTY, JSON in production
+ * Also writes to logs/app.log file
  */
 function getLogger(): Logger {
   if (_logger === null) {
     const isTTY = process.stdout.isTTY;
+    const logsDir = ensureLogsDir();
+    const logFile = join(logsDir, 'app.log');
 
-    _logger = pino({
-      level: config.LOG_LEVEL,
-      formatters: {
-        level(label) {
-          return { level: label };
-        },
-      },
-      timestamp: pino.stdTimeFunctions.isoTime,
-      // Use pino-pretty transport when running in terminal
-      ...(isTTY && {
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            ignore: 'pid,hostname',
-            translateTime: 'HH:MM:ss',
+    // File stream for JSON logs
+    const fileStream = destination(logFile);
+
+    if (isTTY) {
+      // TTY: pretty console + JSON file
+      const prettyStream = pinoPretty({
+        colorize: true,
+        ignore: 'pid,hostname',
+        translateTime: 'HH:MM:ss',
+      });
+
+      _logger = pino(
+        {
+          level: config.LOG_LEVEL,
+          formatters: {
+            level(label) {
+              return { level: label };
+            },
           },
+          timestamp: pino.stdTimeFunctions.isoTime,
         },
-      }),
-    });
+        multistream([
+          { stream: prettyStream, level: config.LOG_LEVEL as pino.Level },
+          { stream: fileStream, level: config.LOG_LEVEL as pino.Level },
+        ])
+      );
+    } else {
+      // Non-TTY: JSON to stdout + file
+      _logger = pino(
+        {
+          level: config.LOG_LEVEL,
+          formatters: {
+            level(label) {
+              return { level: label };
+            },
+          },
+          timestamp: pino.stdTimeFunctions.isoTime,
+        },
+        multistream([
+          { stream: process.stdout, level: config.LOG_LEVEL as pino.Level },
+          { stream: fileStream, level: config.LOG_LEVEL as pino.Level },
+        ])
+      );
+    }
   }
   return _logger;
 }

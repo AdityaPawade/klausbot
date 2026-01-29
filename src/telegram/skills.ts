@@ -102,7 +102,10 @@ export function translateSkillCommand(text: string): string {
  * Skills registered with sanitized names, original names stored for reverse lookup
  */
 export async function registerSkillCommands(bot: Bot<MyContext>): Promise<void> {
+  log.info({ skillsDir: SKILLS_DIR, exists: existsSync(SKILLS_DIR) }, 'Checking skills directory');
+
   const skillNames = getInstalledSkillNames();
+  log.info({ skillNames }, 'Found installed skills');
 
   // Clear and rebuild command map
   skillCommandMap.clear();
@@ -118,20 +121,28 @@ export async function registerSkillCommands(bot: Bot<MyContext>): Promise<void> 
   const skillCommands: BotCommand[] = [];
   for (const name of skillNames) {
     const sanitized = sanitizeCommandName(name);
+    const description = getSkillDescription(name);
+    log.info({ original: name, command: sanitized, descLen: description.length }, 'Adding skill command');
     skillCommandMap.set(sanitized, name);
     skillCommands.push({
       command: sanitized,
-      description: getSkillDescription(name),
+      description,
     });
   }
 
   // Telegram limits to 100 commands
   const allCommands = [...builtins, ...skillCommands].slice(0, 100);
 
-  await bot.api.setMyCommands(allCommands);
+  log.info({ commands: allCommands.map(c => c.command) }, 'Registering commands with Telegram');
 
-  log.info(
-    { builtins: builtins.length, skills: skillNames, total: allCommands.length },
-    'Registered Telegram commands'
-  );
+  try {
+    await bot.api.setMyCommands(allCommands);
+    log.info(
+      { builtins: builtins.length, skills: skillNames, total: allCommands.length },
+      'Registered Telegram commands successfully'
+    );
+  } catch (err) {
+    log.error({ err }, 'Failed to register Telegram commands');
+    throw err;
+  }
 }
