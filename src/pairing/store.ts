@@ -3,6 +3,7 @@ import { dirname } from 'path';
 import { randomBytes } from 'crypto';
 import { Logger } from 'pino';
 import { createChildLogger } from '../utils/index.js';
+import { getHomePath } from '../memory/index.js';
 
 /** Approved user record */
 export interface ApprovedUser {
@@ -39,8 +40,9 @@ export class PairingStore {
   private path: string;
   private logger: Logger;
 
-  constructor(dataDir: string) {
-    this.path = `${dataDir}/pairing.json`;
+  constructor(_dataDir?: string) {
+    // Use ~/.klausbot/config/ for pairing to persist across deployments
+    this.path = getHomePath('config', 'pairing.json');
     this.logger = createChildLogger('pairing');
     this.state = { approved: {}, pending: {} };
     this.load();
