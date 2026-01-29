@@ -142,13 +142,17 @@ export async function queryClaudeCode(
           is_error: parsed.is_error ?? false,
         };
 
+        const truncatedResult = response.result.length > 200
+          ? `${response.result.slice(0, 200)}...`
+          : response.result;
         logger.info(
           {
             duration_ms,
             cost_usd: response.cost_usd,
             session_id: response.session_id,
             is_error: response.is_error,
-            resultLength: response.result.length
+            resultLength: response.result.length,
+            result: truncatedResult,
           },
           'Claude Code responded'
         );
