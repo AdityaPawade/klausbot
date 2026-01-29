@@ -18,8 +18,8 @@ let queue: MessageQueue;
 let isProcessing = false;
 let shouldStop = false;
 
-/** Status message ID per chat (for update/delete) */
-const statusMessageIds = new Map<number, number>();
+/** Status message ID per queue message (for update/delete) */
+const statusMessageIds = new Map<string, { chatId: number; messageId: number }>();
 
 /**
  * Start the gateway daemon
@@ -106,13 +106,13 @@ export async function startGateway(): Promise<void> {
     if (!text.trim()) return;
 
     // Add to queue
-    const msgId = queue.add(chatId, text);
+    const queueId = queue.add(chatId, text);
 
-    // Send status message and track ID
+    // Send status message and track ID by queue message ID
     const statusMsg = await ctx.reply('Queued. Processing...');
-    statusMessageIds.set(chatId, statusMsg.message_id);
+    statusMessageIds.set(queueId, { chatId, messageId: statusMsg.message_id });
 
-    log.info({ chatId, queueId: msgId }, 'Message queued');
+    log.info({ chatId, queueId }, 'Message queued');
 
     // Trigger processing (non-blocking)
     processQueue().catch((err) => {
@@ -201,15 +201,15 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
   const startTime = Date.now();
 
   // Update status message to "Thinking..."
-  const statusMsgId = statusMessageIds.get(msg.chatId);
-  if (statusMsgId) {
+  const statusInfo = statusMessageIds.get(msg.id);
+  if (statusInfo) {
     try {
-      await bot.api.editMessageText(msg.chatId, statusMsgId, 'Thinking...');
+      await bot.api.editMessageText(statusInfo.chatId, statusInfo.messageId, 'Thinking...');
     } catch {
       // Message may have been deleted, send new one
       try {
         const newStatus = await bot.api.sendMessage(msg.chatId, 'Thinking...');
-        statusMessageIds.set(msg.chatId, newStatus.message_id);
+        statusMessageIds.set(msg.id, { chatId: msg.chatId, messageId: newStatus.message_id });
       } catch (err) {
         log.warn({ err, chatId: msg.chatId }, 'Failed to send status message');
       }
@@ -224,12 +224,12 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
     queue.complete(msg.id);
 
     // Delete status message
-    const currentStatusId = statusMessageIds.get(msg.chatId);
-    if (currentStatusId) {
-      bot.api.deleteMessage(msg.chatId, currentStatusId).catch(() => {
+    const currentStatus = statusMessageIds.get(msg.id);
+    if (currentStatus) {
+      bot.api.deleteMessage(currentStatus.chatId, currentStatus.messageId).catch(() => {
         // Ignore delete errors
       });
-      statusMessageIds.delete(msg.chatId);
+      statusMessageIds.delete(msg.id);
     }
 
     // Send response (handles splitting for long messages)

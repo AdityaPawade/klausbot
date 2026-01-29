@@ -7,9 +7,12 @@ let _logger: Logger | null = null;
 /**
  * Get or create the base logger instance
  * Lazy initialization ensures config is loaded before logger is created
+ * Uses pino-pretty for human-readable output in TTY, JSON in production
  */
 function getLogger(): Logger {
   if (_logger === null) {
+    const isTTY = process.stdout.isTTY;
+
     _logger = pino({
       level: config.LOG_LEVEL,
       formatters: {
@@ -18,6 +21,17 @@ function getLogger(): Logger {
         },
       },
       timestamp: pino.stdTimeFunctions.isoTime,
+      // Use pino-pretty transport when running in terminal
+      ...(isTTY && {
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            ignore: 'pid,hostname',
+            translateTime: 'HH:MM:ss',
+          },
+        },
+      }),
     });
   }
   return _logger;
