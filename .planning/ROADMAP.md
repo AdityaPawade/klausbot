@@ -80,12 +80,13 @@ Plans:
 3. Bot refers to user preferences learned in previous sessions
 4. User can ask bot to update its identity and see changes persist
 5. Personality boundaries defined in SOUL.md are respected (refuses out-of-bounds requests)
-   **Plans**: TBD
+   **Plans**: 3 plans in 3 waves
 
 Plans:
 
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Bootstrap foundation: detector, prompts, cache invalidation
+- [ ] 03-02-PLAN.md — Gateway integration: routing, identity update instructions
+- [ ] 03-03-PLAN.md — End-to-end verification (human checkpoint)
 
 ### Phase 4: Skills
 
@@ -152,7 +153,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | ------------- | -------------- | ----------- | ---------- |
 | 1. Foundation | 7/7            | Complete    | 2026-01-29 |
 | 2. Core Loop  | 5/5            | Complete    | 2026-01-29 |
-| 3. Identity   | 0/TBD          | Not started | -          |
+| 3. Identity   | 0/3            | Planned     | -          |
 | 4. Skills     | 0/TBD          | Not started | -          |
 | 5. Proactive  | 0/TBD          | Not started | -          |
 | 6. Multimodal | 0/TBD          | Not started | -          |
