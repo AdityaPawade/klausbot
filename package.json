@@ -4,9 +4,12 @@
   "description": "Self-evolving personal assistant via Telegram backed by Claude Code",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "klausbot": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx src/index.ts",
     "start": "node dist/index.js"
   },
   "dependencies": {

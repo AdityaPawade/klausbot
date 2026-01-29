@@ -1,7 +1,15 @@
 import { spawn } from 'child_process';
+import type { Logger } from 'pino';
 import { createChildLogger } from './logger.js';
 
-const log = createChildLogger('git');
+/** Lazy-initialized logger to avoid config loading at import time */
+let _log: Logger | null = null;
+function getLog(): Logger {
+  if (!_log) {
+    _log = createChildLogger('git');
+  }
+  return _log;
+}
 
 /**
  * Run a git command and return output
@@ -45,20 +53,20 @@ export async function autoCommitChanges(): Promise<boolean> {
   // Check if in git repo
   const repoCheck = await runGit(['rev-parse', '--is-inside-work-tree']);
   if (repoCheck.code !== 0 || repoCheck.stdout.trim() !== 'true') {
-    log.warn('Not in a git repository, skipping auto-commit');
+    getLog().warn('Not in a git repository, skipping auto-commit');
     return false;
   }
 
   // Check for changes
   const status = await runGit(['status', '--porcelain']);
   if (status.code !== 0) {
-    log.warn({ stderr: status.stderr }, 'Failed to check git status');
+    getLog().warn({ stderr: status.stderr }, 'Failed to check git status');
     return false;
   }
 
   // No changes
   if (!status.stdout.trim()) {
-    log.debug('No changes to commit');
+    getLog().debug('No changes to commit');
     return false;
   }
 
@@ -68,12 +76,12 @@ export async function autoCommitChanges(): Promise<boolean> {
     .split('\n')
     .filter((line) => line.trim()).length;
 
-  log.info({ files: changedFiles }, 'Staging changes');
+  getLog().info({ files: changedFiles }, 'Staging changes');
 
   // Stage all changes
   const add = await runGit(['add', '-A']);
   if (add.code !== 0) {
-    log.warn({ stderr: add.stderr }, 'Failed to stage changes');
+    getLog().warn({ stderr: add.stderr }, 'Failed to stage changes');
     return false;
   }
 
@@ -85,13 +93,13 @@ export async function autoCommitChanges(): Promise<boolean> {
   if (commit.code !== 0) {
     // Check if it's just "nothing to commit"
     if (commit.stdout.includes('nothing to commit')) {
-      log.debug('Nothing to commit after staging');
+      getLog().debug('Nothing to commit after staging');
       return false;
     }
-    log.warn({ stderr: commit.stderr }, 'Failed to create commit');
+    getLog().warn({ stderr: commit.stderr }, 'Failed to create commit');
     return false;
   }
 
-  log.info({ files: changedFiles, timestamp }, 'Committed changes');
+  getLog().info({ files: changedFiles, timestamp }, 'Committed changes');
   return true;
 }
