@@ -77,10 +77,10 @@ export async function registerSkillCommands(bot: Bot<MyContext>): Promise<void> 
     { command: 'skill', description: 'Run skill: /skill <name> [args]' },
   ];
 
-  // Skill commands
+  // Skill commands - include original name in description for Claude to map back
   const skillCommands: BotCommand[] = skillNames.map((name) => ({
     command: normalizeCommandName(name),
-    description: getSkillDescription(name),
+    description: `[${name}] ${getSkillDescription(name)}`.slice(0, 256),
   }));
 
   // Telegram limits to 100 commands
