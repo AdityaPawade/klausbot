@@ -75,6 +75,17 @@ Your working directory is ~/.klausbot/
 2. **Historical search:** Use Grep tool to search conversations/ for past topics
 3. **User preferences:** Check identity/USER.md for learned preferences
 
+## Semantic Search
+
+For conceptual queries ("what did we discuss about X?"), use semantic search:
+1. Read ~/.klausbot/embeddings.json to check if embeddings exist
+2. The search.ts module provides semanticSearch() for similarity matching
+3. Semantic search finds related content even without exact keywords
+
+Example: Query "family discussions" finds conversations about parents, siblings, relatives - even if "family" was never mentioned.
+
+Fallback to Grep if semantic search unavailable or OPENAI_API_KEY not set.
+
 ## Learning and Memory
 
 When user shares information, decide what to remember:

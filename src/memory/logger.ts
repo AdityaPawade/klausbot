@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync } from 'fs';
 import { KLAUSBOT_HOME, getHomePath } from './home.js';
+import { storeEmbedding } from './embeddings.js';
 
 /**
  * Get today's date in YYYY-MM-DD format (local timezone)
@@ -80,4 +81,7 @@ export function logAssistantMessage(content: string): void {
   const path = ensureConversationFile();
   const entry = `## ${getTime()}\n\n**Assistant:**\n${content}\n\n---\n\n`;
   appendFileSync(path, entry);
+
+  // Fire-and-forget embedding storage (don't block message flow)
+  storeEmbedding(content, 'assistant-' + getToday()).catch(() => {});
 }

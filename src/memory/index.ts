@@ -30,3 +30,13 @@ export {
   getRetrievalInstructions,
   buildSystemPrompt,
 } from './context.js';
+
+// Embedding generation and storage
+export {
+  generateEmbedding,
+  storeEmbedding,
+  initializeEmbeddings,
+} from './embeddings.js';
+
+// Semantic search
+export { semanticSearch, cosineSimilarity } from './search.js';

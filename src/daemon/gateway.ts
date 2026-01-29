@@ -13,6 +13,7 @@ import { autoCommitChanges } from '../utils/git.js';
 import {
   initializeHome,
   initializeIdentity,
+  initializeEmbeddings,
   logUserMessage,
   logAssistantMessage,
 } from '../memory/index.js';
@@ -35,6 +36,7 @@ export async function startGateway(): Promise<void> {
   // Initialize ~/.klausbot/ data home and identity files
   initializeHome(log);
   initializeIdentity(log);
+  initializeEmbeddings();
 
   // Initialize data directory and components
   ensureDataDir(config.DATA_DIR);
