@@ -50,18 +50,27 @@ export function getRetrievalInstructions(): string {
   const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
 
   return `<memory-instructions>
+## CRITICAL: Read Context Before Responding
+
+You are in an ONGOING conversation. Before responding to ANY message:
+1. FIRST read conversations/${today}.md to see what was discussed earlier
+2. Your response MUST acknowledge the conversation context
+
+If you skip this step, you will give irrelevant responses.
+
 ## Working Directory
 
 Your working directory is ~/.klausbot/
 
 ## Available Files
 
-- conversations/{date}.md - Daily conversation logs (e.g., conversations/${today}.md)
+- conversations/${today}.md - TODAY'S conversation (READ THIS FIRST)
+- conversations/{date}.md - Past conversation logs
 - identity/USER.md - Learned user preferences
 
 ## Retrieval Workflow
 
-1. **Today's context:** Read conversations/${today}.md for current session context
+1. **ALWAYS first:** Read conversations/${today}.md for current session context
 2. **Historical search:** Use Grep tool to search conversations/ for past topics
 3. **Important markers:** Look for [!important] markers in conversations for key information
 4. **User preferences:** Check identity/USER.md for learned preferences
