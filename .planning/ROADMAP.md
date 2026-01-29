@@ -100,12 +100,15 @@ Plans:
 3. Claude suggests "should I create a skill for this?" after recognizing repeated patterns
 4. User approves skill creation, skill persists in folder and works in future sessions
 5. Skills use standard format (SKILL.md or similar) readable by both human and Claude
-   **Plans**: TBD
+**Plans**: 5 plans in 4 waves
 
 Plans:
 
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — Skill discovery and loading system
+- [ ] 04-02-PLAN.md — Telegram integration: commands and invocation
+- [ ] 04-03-PLAN.md — CLI skills picker and skill-creator auto-install
+- [ ] 04-04-PLAN.md — Proactive skill creation awareness
+- [ ] 04-05-PLAN.md — End-to-end verification (human checkpoint)
 
 ### Phase 5: Proactive
 
@@ -154,7 +157,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Foundation | 7/7            | Complete    | 2026-01-29 |
 | 2. Core Loop  | 5/5            | Complete    | 2026-01-29 |
 | 3. Identity   | 3/3            | Complete    | 2026-01-29 |
-| 4. Skills     | 0/TBD          | Not started | -          |
+| 4. Skills     | 0/5            | Planned     | -          |
 | 5. Proactive  | 0/TBD          | Not started | -          |
 | 6. Multimodal | 0/TBD          | Not started | -          |
 
