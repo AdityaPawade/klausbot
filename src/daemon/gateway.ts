@@ -1,4 +1,4 @@
-import { bot, createRunner, type MyContext, registerSkillCommands, getInstalledSkillNames } from '../telegram/index.js';
+import { bot, createRunner, type MyContext, registerSkillCommands, getInstalledSkillNames, translateSkillCommand } from '../telegram/index.js';
 import { MessageQueue, queryClaudeCode, ensureDataDir } from './index.js';
 import type { QueuedMessage } from './queue.js';
 import {
@@ -119,14 +119,17 @@ export async function startGateway(): Promise<void> {
     const chatId = ctx.chat?.id;
     if (!chatId) return;
 
-    const text = ctx.message?.text ?? '';
+    const rawText = ctx.message?.text ?? '';
 
     // Skip empty messages
-    if (!text.trim()) return;
+    if (!rawText.trim()) return;
+
+    // Translate skill commands: /skill_creator → /skill skill-creator
+    const text = translateSkillCommand(rawText);
 
     // Add to queue - typing indicator shown by autoChatAction middleware
     const queueId = queue.add(chatId, text);
-    log.info({ chatId, queueId }, 'Message queued');
+    log.info({ chatId, queueId, translated: text !== rawText }, 'Message queued');
 
     // Trigger processing (non-blocking)
     processQueue().catch((err) => {

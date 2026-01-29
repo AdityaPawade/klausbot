@@ -16,6 +16,23 @@ const log = createChildLogger('telegram:skills');
 /** Default location for Claude Code skills */
 const SKILLS_DIR = join(homedir(), '.claude', 'skills');
 
+/** Map of sanitized command names to original skill names */
+const skillCommandMap = new Map<string, string>();
+
+/**
+ * Sanitize skill name for Telegram command
+ * - Hyphens → underscores (Telegram requirement)
+ * - Lowercase, max 32 chars
+ */
+function sanitizeCommandName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 32);
+}
+
 /**
  * Get list of installed skill names from ~/.claude/skills/
  * A valid skill is a directory containing SKILL.md
@@ -53,25 +70,68 @@ export function getSkillDescription(name: string): string {
 }
 
 /**
+ * Translate skill command in message text
+ * Converts /skill_creator [args] → /skill skill-creator [args]
+ * Returns original text if not a skill command
+ */
+export function translateSkillCommand(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('/')) return text;
+
+  // Extract command and args: /command args
+  const match = trimmed.match(/^\/([^\s]+)(?:\s+(.*))?$/);
+  if (!match) return text;
+
+  const command = match[1].toLowerCase();
+  const args = match[2] || '';
+
+  // Check if this is a registered skill command
+  const skillName = skillCommandMap.get(command);
+  if (skillName) {
+    // Translate to /skill <original-name> [args]
+    const translated = args ? `/skill ${skillName} ${args}` : `/skill ${skillName}`;
+    log.debug({ from: trimmed, to: translated }, 'Translated skill command');
+    return translated;
+  }
+
+  return text;
+}
+
+/**
  * Register bot commands with Telegram menu
- * Skills not registered as commands (hyphens not allowed in Telegram commands)
- * Users invoke skills via: /skill <name> [args]
+ * Skills registered with sanitized names, original names stored for reverse lookup
  */
 export async function registerSkillCommands(bot: Bot<MyContext>): Promise<void> {
   const skillNames = getInstalledSkillNames();
 
-  // Built-in commands only - skills invoked via /skill <name>
+  // Clear and rebuild command map
+  skillCommandMap.clear();
+
+  // Built-in commands
   const builtins: BotCommand[] = [
     { command: 'start', description: 'Start or check pairing' },
     { command: 'help', description: 'Show available commands' },
     { command: 'status', description: 'Show queue status' },
-    { command: 'skill', description: 'Run skill: /skill <name> [args]' },
   ];
 
-  await bot.api.setMyCommands(builtins);
+  // Skill commands with sanitized names
+  const skillCommands: BotCommand[] = [];
+  for (const name of skillNames) {
+    const sanitized = sanitizeCommandName(name);
+    skillCommandMap.set(sanitized, name);
+    skillCommands.push({
+      command: sanitized,
+      description: getSkillDescription(name),
+    });
+  }
+
+  // Telegram limits to 100 commands
+  const allCommands = [...builtins, ...skillCommands].slice(0, 100);
+
+  await bot.api.setMyCommands(allCommands);
 
   log.info(
-    { builtins: builtins.length, skills: skillNames },
+    { builtins: builtins.length, skills: skillNames, total: allCommands.length },
     'Registered Telegram commands'
   );
 }
