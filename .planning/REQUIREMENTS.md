@@ -24,13 +24,13 @@
 
 ### Memory
 
-- [ ] **MEM-01**: All conversations persisted to storage (SQLite or file)
-- [ ] **MEM-02**: Hybrid context model — identity files stuffed in context, history via agentic lookup
-- [ ] **MEM-03**: Session bootstrap includes: SOUL.md, IDENTITY.md, USER.md, latest message pointer, memory index
-- [ ] **MEM-04**: RLM-inspired retrieval — Claude queries conversation history agentic-ally (not fed full history)
-- [ ] **MEM-05**: Semantic retrieval — vector embeddings for relevant memory recall
-- [ ] **MEM-06**: User preferences extracted and stored in USER.md
-- [ ] **MEM-07**: Conversation history queryable by Claude during session
+- [x] **MEM-01**: All conversations persisted to storage (SQLite or file)
+- [x] **MEM-02**: Hybrid context model — identity files stuffed in context, history via agentic lookup
+- [x] **MEM-03**: Session bootstrap includes: SOUL.md, IDENTITY.md, USER.md, latest message pointer, memory index
+- [x] **MEM-04**: RLM-inspired retrieval — Claude queries conversation history agentic-ally (not fed full history)
+- [x] **MEM-05**: Semantic retrieval — vector embeddings for relevant memory recall
+- [x] **MEM-06**: User preferences extracted and stored in USER.md
+- [x] **MEM-07**: Conversation history queryable by Claude during session
 
 ### Identity
 
@@ -110,13 +110,13 @@
 | COMM-04     | Phase 1 | Pending |
 | COMM-05     | Phase 6 | Pending |
 | COMM-06     | Phase 6 | Pending |
-| MEM-01      | Phase 2 | Pending |
-| MEM-02      | Phase 2 | Pending |
-| MEM-03      | Phase 2 | Pending |
-| MEM-04      | Phase 2 | Pending |
-| MEM-05      | Phase 2 | Pending |
-| MEM-06      | Phase 2 | Pending |
-| MEM-07      | Phase 2 | Pending |
+| MEM-01      | Phase 2 | Complete |
+| MEM-02      | Phase 2 | Complete |
+| MEM-03      | Phase 2 | Complete |
+| MEM-04      | Phase 2 | Complete |
+| MEM-05      | Phase 2 | Complete |
+| MEM-06      | Phase 2 | Complete |
+| MEM-07      | Phase 2 | Complete |
 | IDEN-01     | Phase 3 | Pending |
 | IDEN-02     | Phase 3 | Pending |
 | IDEN-03     | Phase 3 | Pending |
@@ -148,4 +148,4 @@
 ---
 
 _Requirements defined: 2026-01-28_
-_Last updated: 2026-01-28 after roadmap creation_
+_Last updated: 2026-01-29 after Phase 2 completion_
