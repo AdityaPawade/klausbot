@@ -23,3 +23,10 @@ export {
   logUserMessage,
   logAssistantMessage,
 } from './logger.js';
+
+// Context building (system prompt with identity + instructions)
+export {
+  loadIdentity,
+  getRetrievalInstructions,
+  buildSystemPrompt,
+} from './context.js';
