@@ -10,6 +10,12 @@ import {
 import { config } from '../config/index.js';
 import { createChildLogger, sendLongMessage } from '../utils/index.js';
 import { autoCommitChanges } from '../utils/git.js';
+import {
+  initializeHome,
+  initializeIdentity,
+  logUserMessage,
+  logAssistantMessage,
+} from '../memory/index.js';
 
 const log = createChildLogger('gateway');
 
@@ -25,6 +31,10 @@ let shouldStop = false;
  */
 export async function startGateway(): Promise<void> {
   log.info('Starting gateway...');
+
+  // Initialize ~/.klausbot/ data home and identity files
+  initializeHome(log);
+  initializeIdentity(log);
 
   // Initialize data directory and components
   ensureDataDir(config.DATA_DIR);
@@ -204,6 +214,9 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
   const typingInterval = setInterval(sendTyping, 4000);
 
   try {
+    // Log user message BEFORE processing (per CONTEXT.md: log original message)
+    logUserMessage(msg.text);
+
     // Call Claude
     const response = await queryClaudeCode(msg.text);
 
@@ -220,6 +233,9 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
         `Error (Claude): ${response.result}`
       );
     } else {
+      // Log assistant response AFTER success
+      logAssistantMessage(response.result);
+
       // Create a minimal context-like object for sendLongMessage
       // sendLongMessage expects a context with reply method
       const messages = await splitAndSend(msg.chatId, response.result);
