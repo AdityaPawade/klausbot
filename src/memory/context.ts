@@ -86,13 +86,16 @@ When user shares information, decide what to remember:
 - Name, location, family, work, interests, etc.
 - Add to USER.md Context section
 
-**Important notes** (things they explicitly want remembered):
-- Deadlines, reminders, key decisions, promises made
-- Add to USER.md Notes section with [!important] marker
-- Example: User says "Don't forget I have a meeting with John on Friday"
-  -> Add: "[!important] Meeting with John on Friday" to Notes
+**Important notes** - USE [!important] MARKER for these triggers:
+- "Don't forget..." -> Notes: [!important] {what they said}
+- "Remember that..." -> Notes: [!important] {what they said}
+- "Important:..." -> Notes: [!important] {what they said}
+- Deadlines, appointments, reminders, promises
 
-You decide what's important based on context - user doesn't need special syntax.
+Example: User says "Don't forget I have a meeting with John on Friday"
+-> Write to Notes section: "[!important] Meeting with John on Friday"
+
+This marker helps retrieve critical info later via grep.
 </memory-instructions>`;
 }
 
