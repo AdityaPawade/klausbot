@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-01-28)
 ## Current Position
 
 Phase: 2 of 6 (Core Loop)
-Plan: 3 of 4 in Phase 2
-Status: In progress
-Last activity: 2026-01-29 - Completed 02-03-PLAN.md (Gateway Memory Integration)
+Plan: 4 of 4 in Phase 2
+Status: Phase complete
+Last activity: 2026-01-29 - Completed 02-05-PLAN.md (Semantic Search / MEM-05 Gap Closure)
 
-Progress: [███████░░░] 75% (3/4 Phase 2 plans)
+Progress: [██████████] 100% (4/4 Phase 2 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 4 min (excluding human verification time)
-- Total execution time: ~42 min
+- Total execution time: ~48 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 7/7 | ~35 min | 5 min |
-| 02-core-loop | 3/4 | 7 min | 2.3 min |
+| 02-core-loop | 4/4 | 13 min | 3.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-07 (~30 min w/testing), 02-01 (3 min), 02-02 (2 min), 02-03 (2 min)
+- Last 5 plans: 02-01 (3 min), 02-02 (2 min), 02-03 (2 min), 02-05 (6 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -65,6 +65,9 @@ Recent decisions affecting current work:
 - 02-02: Identity files cached at startup (changes require process restart)
 - 02-02: XML tag wrapping for identity content: <FILENAME>content</FILENAME>
 - 02-03: Log user message before Claude processing, assistant after success only
+- 02-05: text-embedding-3-small model for embeddings (cheapest, sufficient)
+- 02-05: Fire-and-forget embedding storage (don't block message flow)
+- 02-05: Graceful degradation when OPENAI_API_KEY missing
 
 ### Pending Todos
 
@@ -76,8 +79,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-29T07:46:30Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-01-29T14:10:00Z
+Stopped at: Completed 02-05-PLAN.md (Phase 2 complete)
 Resume file: None
 
 ---
