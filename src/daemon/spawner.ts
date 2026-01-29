@@ -23,6 +23,8 @@ export interface SpawnerOptions {
   timeout?: number;
   /** Model to use (for future /model command) */
   model?: string;
+  /** Additional instructions appended to system prompt (for bootstrap mode) */
+  additionalInstructions?: string;
 }
 
 const DEFAULT_TIMEOUT = 300000; // 5 minutes
@@ -58,7 +60,12 @@ export async function queryClaudeCode(
 
   return new Promise((resolve, reject) => {
     // Build system prompt from identity files + retrieval instructions
-    const systemPrompt = buildSystemPrompt();
+    let systemPrompt = buildSystemPrompt();
+
+    // Append additional instructions if provided (for bootstrap mode)
+    if (options.additionalInstructions) {
+      systemPrompt += '\n\n' + options.additionalInstructions;
+    }
 
     // Build command arguments
     const args = [
