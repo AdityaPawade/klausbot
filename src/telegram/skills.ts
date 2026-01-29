@@ -53,23 +53,14 @@ export function getSkillDescription(name: string): string {
 }
 
 /**
- * Normalize skill name to valid Telegram command
- * - Convert hyphens to underscores (Telegram requirement)
- * - Lowercase
- * - Max 32 chars
- */
-function normalizeCommandName(name: string): string {
-  return name.toLowerCase().replace(/-/g, '_').slice(0, 32);
-}
-
-/**
- * Register skill commands with Telegram bot menu
- * Combines built-in commands with installed skills
+ * Register bot commands with Telegram menu
+ * Skills not registered as commands (hyphens not allowed in Telegram commands)
+ * Users invoke skills via: /skill <name> [args]
  */
 export async function registerSkillCommands(bot: Bot<MyContext>): Promise<void> {
   const skillNames = getInstalledSkillNames();
 
-  // Built-in commands
+  // Built-in commands only - skills invoked via /skill <name>
   const builtins: BotCommand[] = [
     { command: 'start', description: 'Start or check pairing' },
     { command: 'help', description: 'Show available commands' },
@@ -77,19 +68,10 @@ export async function registerSkillCommands(bot: Bot<MyContext>): Promise<void> 
     { command: 'skill', description: 'Run skill: /skill <name> [args]' },
   ];
 
-  // Skill commands - include original name in description for Claude to map back
-  const skillCommands: BotCommand[] = skillNames.map((name) => ({
-    command: normalizeCommandName(name),
-    description: `[${name}] ${getSkillDescription(name)}`.slice(0, 256),
-  }));
-
-  // Telegram limits to 100 commands
-  const allCommands = [...builtins, ...skillCommands].slice(0, 100);
-
-  await bot.api.setMyCommands(allCommands);
+  await bot.api.setMyCommands(builtins);
 
   log.info(
-    { builtins: builtins.length, skills: skillNames.length, total: allCommands.length },
+    { builtins: builtins.length, skills: skillNames },
     'Registered Telegram commands'
   );
 }
