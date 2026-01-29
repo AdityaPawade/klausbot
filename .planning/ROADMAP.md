@@ -17,6 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Core Loop** - Claude Code integration with stateless sessions and file-based memory
 - [x] **Phase 3: Identity** - Bootstrap flow and persistent personality system
 - [x] **Phase 4: Skills** - Extensible capabilities system with skill isolation
+- [ ] **Phase 4.1: Skills Polish** - Skill registry and system prompt enhancements (INSERTED)
 - [ ] **Phase 5: Proactive** - Cron scheduling and self-evolution system
 - [ ] **Phase 6: Multimodal** - Voice transcription and image analysis
 
@@ -108,6 +109,22 @@ Plans:
 - [x] 04-02-PLAN.md — CLI skills installer and skill-creator auto-install
 - [x] 04-03-PLAN.md — End-to-end verification (human checkpoint)
 
+### Phase 4.1: Skills Polish (INSERTED)
+
+**Goal**: Address skill system gaps identified during Phase 4 UAT
+**Depends on**: Phase 4
+**Requirements**: None (UAT-derived enhancements)
+**Success Criteria** (what must be TRUE):
+
+1. System prompt includes reminder that skills must be created in global `~/.claude/skills/` folder
+2. CLI `klausbot skills` shows option to browse/install from skill registry
+**Plans**: 2 plans in 1 wave
+
+Plans:
+
+- [ ] 04.1-01-PLAN.md — System prompt skill folder reminder
+- [ ] 04.1-02-PLAN.md — Interactive browse command with type-to-filter
+
 ### Phase 5: Proactive
 
 **Goal**: Bot executes scheduled tasks autonomously and improves itself based on learnings
@@ -150,14 +167,15 @@ Plans:
 Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 (Phase 6 can parallelize with Phase 3-5 if prioritized)
 
-| Phase         | Plans Complete | Status      | Completed  |
-| ------------- | -------------- | ----------- | ---------- |
-| 1. Foundation | 7/7            | Complete    | 2026-01-29 |
-| 2. Core Loop  | 5/5            | Complete    | 2026-01-29 |
-| 3. Identity   | 3/3            | Complete    | 2026-01-29 |
-| 4. Skills     | 3/3            | Complete    | 2026-01-29 |
-| 5. Proactive  | 0/TBD          | Not started | -          |
-| 6. Multimodal | 0/TBD          | Not started | -          |
+| Phase            | Plans Complete | Status      | Completed  |
+| ---------------- | -------------- | ----------- | ---------- |
+| 1. Foundation    | 7/7            | Complete    | 2026-01-29 |
+| 2. Core Loop     | 5/5            | Complete    | 2026-01-29 |
+| 3. Identity      | 3/3            | Complete    | 2026-01-29 |
+| 4. Skills        | 3/3            | Complete    | 2026-01-29 |
+| 4.1 Skills Polish| 0/2            | Planned     | -          |
+| 5. Proactive     | 0/TBD          | Not started | -          |
+| 6. Multimodal    | 0/TBD          | Not started | -          |
 
 ---
 
