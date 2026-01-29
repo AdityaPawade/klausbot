@@ -42,7 +42,9 @@ function printHelp(): void {
 klausbot - Telegram gateway for Claude Code
 
 Usage:
-  klausbot [daemon]                   Start the gateway daemon
+  klausbot [daemon]                   Start the gateway daemon (default)
+  klausbot gateway                    Start the gateway daemon (alias)
+  klausbot init                       Initialize ~/.klausbot/ directory
   klausbot install                    Interactive installation wizard
   klausbot pairing approve <code>     Approve pairing request
   klausbot pairing reject <code>      Reject pairing request
@@ -177,11 +179,32 @@ async function handlePairing(): Promise<void> {
 async function main(): Promise<void> {
   switch (command) {
     case 'daemon':
+    case 'gateway':  // Explicit alias per CONTEXT.md
     case undefined:
     case '': {
       // Dynamic import to avoid loading bot when running CLI commands
       const { startGateway } = await import('./daemon/index.js');
       await startGateway();
+      break;
+    }
+
+    case 'init': {
+      // Initialize ~/.klausbot/ without starting gateway
+      const { createChildLogger } = await import('./utils/logger.js');
+      const { initializeHome, initializeIdentity, KLAUSBOT_HOME } = await import('./memory/index.js');
+
+      const log = createChildLogger('init');
+      console.log(`Initializing klausbot data home at ${KLAUSBOT_HOME}...`);
+
+      initializeHome(log);
+      initializeIdentity(log);
+
+      console.log('Done! Created:');
+      console.log('  ~/.klausbot/config/');
+      console.log('  ~/.klausbot/conversations/');
+      console.log('  ~/.klausbot/identity/SOUL.md');
+      console.log('  ~/.klausbot/identity/IDENTITY.md');
+      console.log('  ~/.klausbot/identity/USER.md');
       break;
     }
 
