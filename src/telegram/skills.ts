@@ -1,0 +1,95 @@
+import { readdirSync, existsSync, readFileSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
+import type { Bot } from 'grammy';
+
+/** Telegram bot command shape (for setMyCommands) */
+interface BotCommand {
+  command: string;
+  description: string;
+}
+import type { MyContext } from './bot.js';
+import { createChildLogger } from '../utils/index.js';
+
+const log = createChildLogger('telegram:skills');
+
+/** Default location for Claude Code skills */
+const SKILLS_DIR = join(homedir(), '.claude', 'skills');
+
+/**
+ * Get list of installed skill names from ~/.claude/skills/
+ * A valid skill is a directory containing SKILL.md
+ */
+export function getInstalledSkillNames(): string[] {
+  if (!existsSync(SKILLS_DIR)) return [];
+
+  return readdirSync(SKILLS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .filter((d) => existsSync(join(SKILLS_DIR, d.name, 'SKILL.md')))
+    .map((d) => d.name);
+}
+
+/**
+ * Get skill description from SKILL.md frontmatter
+ * Falls back to skill name if description not found
+ */
+export function getSkillDescription(name: string): string {
+  const skillPath = join(SKILLS_DIR, name, 'SKILL.md');
+  if (!existsSync(skillPath)) return name;
+
+  try {
+    const content = readFileSync(skillPath, 'utf-8');
+    // Extract description from YAML frontmatter
+    const match = content.match(/^---\n[\s\S]*?description:\s*(.+)/m);
+    if (match) {
+      // Telegram limits command descriptions to 256 chars
+      return match[1].trim().slice(0, 250);
+    }
+  } catch {
+    // Ignore read errors, fall back to name
+  }
+
+  return name;
+}
+
+/**
+ * Normalize skill name to valid Telegram command
+ * - Convert hyphens to underscores (Telegram requirement)
+ * - Lowercase
+ * - Max 32 chars
+ */
+function normalizeCommandName(name: string): string {
+  return name.toLowerCase().replace(/-/g, '_').slice(0, 32);
+}
+
+/**
+ * Register skill commands with Telegram bot menu
+ * Combines built-in commands with installed skills
+ */
+export async function registerSkillCommands(bot: Bot<MyContext>): Promise<void> {
+  const skillNames = getInstalledSkillNames();
+
+  // Built-in commands
+  const builtins: BotCommand[] = [
+    { command: 'start', description: 'Start or check pairing' },
+    { command: 'help', description: 'Show available commands' },
+    { command: 'status', description: 'Show queue status' },
+    { command: 'skill', description: 'Run skill: /skill <name> [args]' },
+  ];
+
+  // Skill commands
+  const skillCommands: BotCommand[] = skillNames.map((name) => ({
+    command: normalizeCommandName(name),
+    description: getSkillDescription(name),
+  }));
+
+  // Telegram limits to 100 commands
+  const allCommands = [...builtins, ...skillCommands].slice(0, 100);
+
+  await bot.api.setMyCommands(allCommands);
+
+  log.info(
+    { builtins: builtins.length, skills: skillNames.length, total: allCommands.length },
+    'Registered Telegram commands'
+  );
+}
