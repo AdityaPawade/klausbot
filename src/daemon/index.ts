@@ -6,9 +6,13 @@ import { config } from '../config/index.js';
 export { MessageQueue } from './queue.js';
 export type { QueuedMessage, QueueStats, MessageStatus } from './queue.js';
 
-// Re-export spawner types and function
+// Re-export spawner types and function (legacy - kept for backward compatibility)
 export { queryClaudeCode } from './spawner.js';
 export type { ClaudeResponse, SpawnerOptions } from './spawner.js';
+
+// Re-export ACP client (new streaming-based approach)
+export { queryWithStreaming } from './acp-client.js';
+export type { AcpResponse, AcpOptions } from './acp-client.js';
 
 // Re-export gateway functions
 export { startGateway, stopGateway } from './gateway.js';
