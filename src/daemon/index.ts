@@ -10,6 +10,9 @@ export type { QueuedMessage, QueueStats, MessageStatus } from './queue.js';
 export { queryClaudeCode } from './spawner.js';
 export type { ClaudeResponse, SpawnerOptions } from './spawner.js';
 
+// Re-export transcript recovery for external use
+export { handleTimeout } from './transcript.js';
+
 // Re-export gateway functions
 export { startGateway, stopGateway } from './gateway.js';
 

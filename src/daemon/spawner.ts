@@ -5,6 +5,7 @@ import path from 'path';
 import { Logger } from 'pino';
 import { createChildLogger } from '../utils/logger.js';
 import { KLAUSBOT_HOME, buildSystemPrompt } from '../memory/index.js';
+import { handleTimeout } from './transcript.js';
 
 /**
  * Get MCP server configuration for klausbot cron tools
@@ -160,6 +161,21 @@ export async function queryClaudeCode(
 
       // Handle timeout
       if (timedOut) {
+        // Attempt to recover response from Claude CLI transcript
+        const recovered = handleTimeout(KLAUSBOT_HOME);
+        if (recovered) {
+          logger.info({ duration_ms }, 'Recovered response from timeout');
+          resolve({
+            result: recovered,
+            cost_usd: 0,  // Unknown cost for recovered response
+            session_id: 'recovered',
+            duration_ms,
+            is_error: false,
+          });
+          return;
+        }
+
+        // Original timeout error if recovery fails
         const timeoutSec = Math.round(timeout / 1000);
         const error = `Claude timed out after ${timeoutSec} seconds`;
         logger.error({ timeout, duration_ms }, error);
