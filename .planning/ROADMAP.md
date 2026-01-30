@@ -199,18 +199,18 @@ Plans:
 **Success Criteria** (what must be TRUE):
 
 1. When Claude times out (>5 min), system recovers response from transcript at `~/.claude/projects/`
-2. Transcript path constructed dynamically from cwd (e.g., `/home/user/klausbot` → `-home-user-klausbot`)
+2. Transcript path constructed dynamically from cwd (e.g., `/home/user/klausbot` -> `-home-user-klausbot`)
 3. `klausbot skills` CLI subcommand removed entirely
 4. Documentation points to `npx skills` for external skill installation
 5. User can describe agent in natural language, Claude creates `~/.claude/agents/{name}.md`
 6. System prompt reminds Claude that agents live in global `~/.claude/agents/` folder
-**Plans**: 4 plans in 3 waves
+**Plans**: 4 plans in 2 waves
 
 Plans:
 
 - [ ] 07-01-PLAN.md — Timeout recovery: transcript path construction, JSONL parsing
 - [ ] 07-02-PLAN.md — Skills cleanup: remove CLI subcommand, add documentation
-- [ ] 07-03-PLAN.md — Agent authoring: natural language → agent definition file
+- [ ] 07-03-PLAN.md — Agent authoring: natural language -> agent definition file
 - [ ] 07-04-PLAN.md — End-to-end verification (human checkpoint)
 
 ## Progress
