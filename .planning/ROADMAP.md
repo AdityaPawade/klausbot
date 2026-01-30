@@ -19,6 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Skills** - Extensible capabilities system with skill isolation
 - [x] **Phase 4.1: Skills Polish** - Skill registry and system prompt enhancements (INSERTED)
 - [ ] **Phase 5: Proactive** - Cron scheduling and self-evolution system
+- [ ] **Phase 5.1: ACP Streaming** - Replace CLI spawner with ACP client for streaming + MCP tools (INSERTED)
 - [ ] **Phase 6: Multimodal** - Voice transcription and image analysis
 - [ ] **Phase 7: Resilience & Tooling** - Timeout recovery, skills cleanup, agent authoring
 
@@ -149,6 +150,26 @@ Plans:
 - [ ] 05-04-PLAN.md — Learning system: LEARNINGS.md, system prompt instructions
 - [ ] 05-05-PLAN.md — End-to-end verification (human checkpoint)
 
+### Phase 5.1: ACP Streaming (INSERTED)
+
+**Goal**: Replace CLI spawner with ACP client for real-time streaming to Telegram, expose cron/memory as MCP tools
+**Depends on**: Phase 5
+**Requirements**: None (architecture improvement discovered during Phase 5 UAT)
+**Success Criteria** (what must be TRUE):
+
+1. User sends message, response streams to Telegram in chunks (not wait-for-completion)
+2. Claude calls `create_cron` MCP tool with typed parameters (no CLI string construction)
+3. Claude calls `list_crons`, `delete_cron` MCP tools for cron management
+4. Gateway acts as ACP client, claude-code-acp as agent (vendor-agnostic architecture)
+5. Existing functionality preserved (identity, memory, skills all still work)
+**Plans**: 3 plans in 3 waves
+
+Plans:
+
+- [ ] 05.1-01-PLAN.md — MCP server with cron tools (create_cron, list_crons, delete_cron)
+- [ ] 05.1-02-PLAN.md — ACP client with Telegram streaming, gateway integration
+- [ ] 05.1-03-PLAN.md — End-to-end verification (human checkpoint)
+
 ### Phase 6: Multimodal
 
 **Goal**: Bot processes voice messages and images as naturally as text
@@ -200,7 +221,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Identity      | 3/3            | Complete    | 2026-01-29 |
 | 4. Skills        | 3/3            | Complete    | 2026-01-29 |
 | 4.1 Skills Polish| 2/2            | Complete    | 2026-01-30 |
-| 5. Proactive     | 0/5            | Not started | -          |
+| 5. Proactive     | 4/5            | In progress | -          |
+| 5.1 ACP Streaming| 0/3            | Not started | -          |
 | 6. Multimodal    | 0/TBD          | Not started | -          |
 | 7. Resilience    | 0/4            | Not started | -          |
 
