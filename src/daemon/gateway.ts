@@ -18,7 +18,6 @@ import {
   invalidateIdentityCache,
 } from '../memory/index.js';
 import { needsBootstrap, BOOTSTRAP_INSTRUCTIONS } from '../bootstrap/index.js';
-import { ensureSkillCreator } from '../cli/skills.js';
 import { startScheduler, stopScheduler, loadCronStore } from '../cron/index.js';
 import {
   MediaAttachment,
@@ -179,9 +178,6 @@ export async function startGateway(): Promise<void> {
   // Initialize cron system
   startScheduler();
   log.info({ jobs: loadCronStore().jobs.filter(j => j.enabled).length }, 'Cron scheduler initialized');
-
-  // Auto-install skill-creator if missing
-  await ensureSkillCreator();
 
   // Register skill commands in Telegram menu
   await registerSkillCommands(bot);

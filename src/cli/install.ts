@@ -7,6 +7,7 @@
 import { input, confirm, select } from '@inquirer/prompts';
 import { execSync } from 'child_process';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { ensureSkillCreator } from './skills.js';
 
 /**
  * Check if a command exists
@@ -134,6 +135,16 @@ This wizard will help you configure klausbot for your environment.
     await handleDockerInstall(botToken);
   } else {
     await handleDevInstall(botToken);
+  }
+
+  // Install skill-creator for Claude skill authoring
+  console.log('\nInstalling skill-creator...');
+  try {
+    await ensureSkillCreator();
+    console.log('skill-creator installed to ~/.claude/skills/');
+  } catch (error) {
+    // Non-fatal - user can install later
+    console.warn('Failed to install skill-creator (network error). Run install again later.');
   }
 }
 
