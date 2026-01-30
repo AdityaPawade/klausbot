@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-28)
 ## Current Position
 
 Phase: 5 of 7 (Proactive)
-Plan: 3 of 5 in Phase 5
+Plan: 4 of 5 in Phase 5
 Status: In progress
-Last activity: 2026-01-30 - Completed 05-03-PLAN.md (Gateway Integration)
+Last activity: 2026-01-30 - Completed 05-04-PLAN.md (Learning System)
 
-Progress: [███████░░░] 70% (21/30 plans complete)
+Progress: [███████░░░] 73% (22/30 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 22
 - Average duration: 4 min (excluding human verification time)
-- Total execution time: ~72 min
+- Total execution time: ~75 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████░░░] 70% (21/30 plans complete)
 | 03-identity | 3/3 | ~12 min | 4 min |
 | 04-skills | 3/3 | ~35 min | 12 min |
 | 04.1-skills-polish | 2/2 | 4 min | 2 min |
-| 05-proactive | 3/5 | 6.8 min | 2.3 min |
+| 05-proactive | 4/5 | 9.8 min | 2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04.1-02 (2 min), 05-01 (2.5 min), 05-02 (2.3 min), 05-03 (2 min)
+- Last 5 plans: 05-01 (2.5 min), 05-02 (2.3 min), 05-03 (2 min), 05-04 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -67,6 +67,9 @@ Recent decisions affecting current work:
 - 05-02: Recover missed jobs within 24 hours on startup
 - 05-03: startScheduler after initializeHome, stopScheduler before processing cleanup
 - 05-03: /crons shows only enabled jobs with next run and last status
+- 05-04: LEARNINGS.md agentic (read when relevant, not preloaded)
+- 05-04: Proactive suggestions at task end, not mid-conversation
+- 05-04: Cron management via natural language intent recognition
 
 ### Roadmap Evolution
 
@@ -83,7 +86,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed 05-03-PLAN.md (Gateway Integration)
+Stopped at: Completed 05-04-PLAN.md (Learning System)
 Resume file: None
 
 ---
