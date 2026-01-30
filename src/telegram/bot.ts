@@ -2,6 +2,7 @@ import { Bot, Context, GrammyError, HttpError } from 'grammy';
 import { run, sequentialize } from '@grammyjs/runner';
 import { autoRetry } from '@grammyjs/auto-retry';
 import { autoChatAction, AutoChatActionFlavor } from '@grammyjs/auto-chat-action';
+import { hydrateFiles } from '@grammyjs/files';
 import { config } from '../config/index.js';
 import { logger, createChildLogger } from '../utils/index.js';
 
@@ -20,6 +21,9 @@ bot.api.config.use(
     maxDelaySeconds: 300,
   })
 );
+
+// Enable file download helper methods
+bot.api.config.use(hydrateFiles(config.TELEGRAM_BOT_TOKEN));
 
 // Middleware: typing indicator during processing
 bot.use(autoChatAction());
