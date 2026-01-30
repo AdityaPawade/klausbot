@@ -138,12 +138,15 @@ Plans:
 4. LEARNINGS.md contains mistakes and insights from past sessions
 5. Bot avoids repeating documented mistakes (consults LEARNINGS.md)
 6. Bot proactively suggests improvements based on usage patterns
-   **Plans**: TBD
+**Plans**: 5 plans in 4 waves
 
 Plans:
 
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md — Cron foundation: types, store, schedule parsing
+- [ ] 05-02-PLAN.md — Cron execution: executor, service, scheduler loop
+- [ ] 05-03-PLAN.md — Cron integration: gateway lifecycle, /crons command
+- [ ] 05-04-PLAN.md — Learning system: LEARNINGS.md, system prompt instructions
+- [ ] 05-05-PLAN.md — End-to-end verification (human checkpoint)
 
 ### Phase 6: Multimodal
 
@@ -174,7 +177,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Identity      | 3/3            | Complete    | 2026-01-29 |
 | 4. Skills        | 3/3            | Complete    | 2026-01-29 |
 | 4.1 Skills Polish| 2/2            | Complete    | 2026-01-30 |
-| 5. Proactive     | 0/TBD          | Not started | -          |
+| 5. Proactive     | 0/5            | Not started | -          |
 | 6. Multimodal    | 0/TBD          | Not started | -          |
 
 ---
