@@ -85,6 +85,9 @@ Recent decisions affecting current work:
 - 07-01: Graceful null returns for transcript recovery failures
 - 07-01: Recovered responses prefixed with [Recovered from timeout]
 - 07-01: session_id 'recovered' and cost_usd 0 for recovered responses
+- 07-02: Skills CLI removed - management via npx skills or manual
+- 07-02: skill-creator installed during wizard, not gateway startup
+- 07-02: GitHub fetch calls use withRetry (3 retries, 1s base delay)
 - 07-03: Agent reminder after skill reminder (folder location reminders grouped)
 - 07-03: Agent file format: YAML frontmatter (name, description, tools, model) + body
 
@@ -105,7 +108,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed 07-03-PLAN.md (Agent Authoring)
+Stopped at: Completed 07-02-PLAN.md (Skills Cleanup)
 Resume file: None
 
 ---
