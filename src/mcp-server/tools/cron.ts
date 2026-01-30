@@ -7,6 +7,9 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createCronJob, listCronJobs, deleteCronJob } from '../../cron/service.js';
 import { parseSchedule } from '../../cron/parse.js';
+import { createChildLogger } from '../../utils/index.js';
+
+const log = createChildLogger('mcp:cron');
 
 /**
  * Register cron tools with MCP server
@@ -23,10 +26,12 @@ export function registerCronTools(server: McpServer): void {
       chatId: z.number().describe('Telegram chat ID for notifications'),
     },
     async ({ name, schedule, instruction, chatId }) => {
+      log.info({ name, schedule, chatId }, 'create_cron called');
       // Parse schedule string to CronSchedule
       const parsed = parseSchedule(schedule);
 
       if (!parsed) {
+        log.warn({ schedule }, 'create_cron invalid schedule');
         return {
           content: [{
             type: 'text' as const,
@@ -53,6 +58,7 @@ export function registerCronTools(server: McpServer): void {
         humanSchedule: parsed.humanReadable,
       });
 
+      log.info({ jobId: job.id, name }, 'create_cron completed');
       return {
         content: [{
           type: 'text' as const,
@@ -70,6 +76,7 @@ export function registerCronTools(server: McpServer): void {
       chatId: z.number().describe('Telegram chat ID to filter jobs'),
     },
     async ({ chatId }) => {
+      log.info({ chatId }, 'list_crons called');
       const jobs = listCronJobs(chatId);
 
       if (jobs.length === 0) {
@@ -91,6 +98,7 @@ export function registerCronTools(server: McpServer): void {
         return `- ${job.name}${enabled}\n  ID: ${job.id}\n  Schedule: ${job.humanSchedule}\n  Next: ${nextRun}${status}`;
       });
 
+      log.info({ count: jobs.length }, 'list_crons completed');
       return {
         content: [{
           type: 'text' as const,
@@ -108,9 +116,11 @@ export function registerCronTools(server: McpServer): void {
       id: z.string().describe('Job ID to delete (UUID)'),
     },
     async ({ id }) => {
+      log.info({ id }, 'delete_cron called');
       const deleted = deleteCronJob(id);
 
       if (!deleted) {
+        log.warn({ id }, 'delete_cron job not found');
         return {
           content: [{
             type: 'text' as const,
@@ -119,6 +129,7 @@ export function registerCronTools(server: McpServer): void {
         };
       }
 
+      log.info({ id }, 'delete_cron completed');
       return {
         content: [{
           type: 'text' as const,
