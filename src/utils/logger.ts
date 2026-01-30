@@ -1,21 +1,27 @@
 import pino, { Logger, destination, multistream } from 'pino';
-import { createWriteStream, mkdirSync } from 'fs';
+import { mkdirSync } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 import pinoPretty from 'pino-pretty';
 import { config } from '../config/index.js';
 
 /** Base logger instance (lazy-initialized) */
 let _logger: Logger | null = null;
 
+/** MCP logger instance (separate to avoid stdout conflicts) */
+let _mcpLogger: Logger | null = null;
+
+/** Logs directory under ~/.klausbot/logs */
+const LOGS_DIR = join(homedir(), '.klausbot', 'logs');
+
 /** Ensure logs directory exists */
 function ensureLogsDir(): string {
-  const logsDir = join(process.cwd(), 'logs');
   try {
-    mkdirSync(logsDir, { recursive: true });
+    mkdirSync(LOGS_DIR, { recursive: true });
   } catch {
     // ignore
   }
-  return logsDir;
+  return LOGS_DIR;
 }
 
 /**
@@ -96,4 +102,42 @@ export const logger: Logger = new Proxy({} as Logger, {
  */
 export function createChildLogger(name: string): Logger {
   return getLogger().child({ module: name });
+}
+
+/**
+ * Create a logger for MCP server context
+ * Uses stderr instead of stdout (stdout is reserved for MCP JSON-RPC protocol)
+ * @param name - Module or component name for context
+ */
+export function createMcpLogger(name: string): Logger {
+  if (_mcpLogger === null) {
+    const logsDir = ensureLogsDir();
+    const logFile = join(logsDir, 'mcp.log');
+    const fileStream = destination(logFile);
+
+    // MCP server: stderr for console (stdout is protocol), file for persistence
+    const prettyStream = pinoPretty({
+      colorize: true,
+      ignore: 'pid,hostname',
+      translateTime: 'HH:MM:ss',
+      destination: 2, // stderr
+    });
+
+    _mcpLogger = pino(
+      {
+        level: config.LOG_LEVEL,
+        formatters: {
+          level(label) {
+            return { level: label };
+          },
+        },
+        timestamp: pino.stdTimeFunctions.isoTime,
+      },
+      multistream([
+        { stream: prettyStream, level: config.LOG_LEVEL as pino.Level },
+        { stream: fileStream, level: config.LOG_LEVEL as pino.Level },
+      ])
+    );
+  }
+  return _mcpLogger.child({ module: name });
 }

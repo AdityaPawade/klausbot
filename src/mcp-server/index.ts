@@ -7,9 +7,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { registerCronTools } from './tools/cron.js';
 import { registerMemoryTools } from './tools/memory.js';
-import { createChildLogger } from '../utils/index.js';
+import { createMcpLogger } from '../utils/index.js';
 
-const log = createChildLogger('mcp-server');
+const log = createMcpLogger('mcp-server');
 
 /**
  * Run the MCP server

@@ -6,9 +6,9 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { semanticSearch } from '../../memory/search.js';
-import { createChildLogger } from '../../utils/index.js';
+import { createMcpLogger } from '../../utils/index.js';
 
-const log = createChildLogger('mcp:memory');
+const log = createMcpLogger('mcp:memory');
 
 /**
  * Register memory tools with MCP server

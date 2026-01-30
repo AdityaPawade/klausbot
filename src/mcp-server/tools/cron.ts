@@ -7,9 +7,9 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createCronJob, listCronJobs, deleteCronJob } from '../../cron/service.js';
 import { parseSchedule } from '../../cron/parse.js';
-import { createChildLogger } from '../../utils/index.js';
+import { createMcpLogger } from '../../utils/index.js';
 
-const log = createChildLogger('mcp:cron');
+const log = createMcpLogger('mcp:cron');
 
 /**
  * Register cron tools with MCP server
