@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Skills** - Extensible capabilities system with skill isolation
 - [x] **Phase 4.1: Skills Polish** - Skill registry and system prompt enhancements (INSERTED)
 - [ ] **Phase 5: Proactive** - Cron scheduling and self-evolution system
-- [ ] **Phase 5.1: MCP Cron Tools** - Typed MCP tools for cron management via CLI spawner (INSERTED)
+- [x] **Phase 5.1: MCP Cron Tools** - Typed MCP tools for cron management via CLI spawner (INSERTED)
 - [ ] **Phase 6: Multimodal** - Voice transcription and image analysis
 - [ ] **Phase 7: Resilience & Tooling** - Timeout recovery, skills cleanup, agent authoring
 
@@ -168,8 +168,8 @@ Note: Originally planned as ACP streaming with Agent SDK. Pivoted to CLI spawner
 
 Plans:
 
-- [ ] 05.1-01-PLAN.md — Standalone MCP server with cron tools (stdio transport)
-- [ ] 05.1-02-PLAN.md — Spawner integration and end-to-end verification
+- [x] 05.1-01-PLAN.md — Standalone MCP server with cron tools (stdio transport)
+- [x] 05.1-02-PLAN.md — Spawner integration and end-to-end verification
 
 ### Phase 6: Multimodal
 
@@ -223,7 +223,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. Skills        | 3/3            | Complete    | 2026-01-29 |
 | 4.1 Skills Polish| 2/2            | Complete    | 2026-01-30 |
 | 5. Proactive     | 4/5            | In progress | -          |
-| 5.1 MCP Cron     | 0/2            | Not started | -          |
+| 5.1 MCP Cron     | 2/2            | Complete    | 2026-01-30 |
 | 6. Multimodal    | 0/TBD          | Not started | -          |
 | 7. Resilience    | 0/4            | Not started | -          |
 
