@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-28)
 
 **Core value:** 24/7 personal assistant that never forgets, never loses context, and self-improves through use.
-**Current focus:** Phase 7.1 complete - Memory Search MCP
+**Current focus:** Phase 7.1 complete - Memory Search MCP (+ gap closure)
 
 ## Current Position
 
 Phase: 7.1 of 7.1 (Memory Search MCP)
-Plan: 2 of 2 in Phase 7.1
+Plan: 3 of 3 in Phase 7.1 (gap closure)
 Status: Phase complete
-Last activity: 2026-01-30 - Completed 07.1-02-PLAN.md (MCP Memory Search Tool)
+Last activity: 2026-01-30 - Completed 07.1-03-PLAN.md (MCP Logging Gap Closure)
 
-Progress: [██████████] 100% (37/37 plans complete)
+Progress: [██████████] 100% (38/38 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 37
+- Total plans completed: 38
 - Average duration: ~4.5 min (excluding human verification time)
-- Total execution time: ~175 min
+- Total execution time: ~177 min
 
 **By Phase:**
 
@@ -36,11 +36,11 @@ Progress: [██████████] 100% (37/37 plans complete)
 | 05.1-mcp-cron | 2/2 | ~5 min | 2.5 min |
 | 06-multimodal | 5/5 | ~11 min | 2.2 min |
 | 07-resilience-tooling | 4/4 | ~52 min | 13 min |
-| 07.1-memory-search-mcp | 2/2 | 14 min | 7 min |
+| 07.1-memory-search-mcp | 3/3 | 16 min | 5.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 07-03 (~2 min), 07-04 (~45 min), 07.1-01 (12 min), 07.1-02 (2 min)
-- Trend: Phase 7.1 completed - memory search now available to Claude
+- Last 5 plans: 07-04 (~45 min), 07.1-01 (12 min), 07.1-02 (2 min), 07.1-03 (2 min)
+- Trend: Phase 7.1 complete with gap closure - MCP tools now have observability
 
 *Updated after each plan completion*
 
@@ -103,6 +103,9 @@ Recent decisions affecting current work:
 - 07.1-02: Use k = ? constraint for sqlite-vec KNN (not LIMIT)
 - 07.1-02: Score as 1/(1+distance) for intuitive percentage display
 - 07.1-02: MCP tool registration pattern: registerXTools(server)
+- 07.1-03: MCP log namespace pattern: mcp-server, mcp:memory, mcp:cron
+- 07.1-03: Structured logging with params object first, message second
+- 07.1-03: Warning level for validation failures (invalid schedule, not found)
 
 ### Roadmap Evolution
 
@@ -122,7 +125,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Phase 7.1 complete, ready for Phase 8
+Stopped at: Phase 7.1 complete (including gap closure), ready for Phase 8
 Resume file: None
 
 ---
