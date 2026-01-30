@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-28)
 
 **Core value:** 24/7 personal assistant that never forgets, never loses context, and self-improves through use.
-**Current focus:** Phase 7.1 - Memory Search MCP (Not started)
+**Current focus:** Phase 7.1 - Memory Search MCP (Plan 01 complete)
 
 ## Current Position
 
-Phase: 7 of 7 (Resilience & Tooling)
-Plan: 4 of 4 in Phase 7
-Status: Phase complete
-Last activity: 2026-01-30 - Completed 07-04-PLAN.md (End-to-end Verification)
+Phase: 7.1 of 7.1 (Memory Search MCP)
+Plan: 1 of 2 in Phase 7.1
+Status: In progress
+Last activity: 2026-01-30 - Completed 07.1-01-PLAN.md (SQLite Vector Storage)
 
-Progress: [██████████] 100% (35/35 plans complete)
+Progress: [██████████] 100% (36/37 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 35
+- Total plans completed: 36
 - Average duration: ~4.6 min (excluding human verification time)
-- Total execution time: ~161 min
+- Total execution time: ~173 min
 
 **By Phase:**
 
@@ -36,10 +36,11 @@ Progress: [██████████] 100% (35/35 plans complete)
 | 05.1-mcp-cron | 2/2 | ~5 min | 2.5 min |
 | 06-multimodal | 5/5 | ~11 min | 2.2 min |
 | 07-resilience-tooling | 4/4 | ~52 min | 13 min |
+| 07.1-memory-search-mcp | 1/2 | 12 min | 12 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-04 (~3 min), 06-05 (~2 min), 07-01 (~3 min), 07-02 (~2 min), 07-03 (~2 min), 07-04 (~45 min)
-- Trend: 07-04 longer due to CLI migration improvements during verification
+- Last 5 plans: 07-02 (~2 min), 07-03 (~2 min), 07-04 (~45 min), 07.1-01 (12 min)
+- Trend: 07.1-01 included sqlite-vec API debugging
 
 *Updated after each plan completion*
 
@@ -95,12 +96,17 @@ Recent decisions affecting current work:
 - 07-04: Init command clears conversations on reset (preserves config)
 - 07-04: CLI commands silence logging (clean output)
 - 07-04: Commander.js as standard CLI framework
+- 07.1-01: Use sqliteVec.load(db) instead of db.loadExtension() for proper binding
+- 07.1-01: BigInt(rowid) required for vec0 virtual table inserts
+- 07.1-01: Float32Array directly (not .buffer) for vector data
+- 07.1-01: initializeEmbeddings() kept as no-op for API compatibility
 
 ### Roadmap Evolution
 
 - Phase 7 added: Resilience & Tooling (timeout recovery, skills cleanup, agent authoring)
 - Phase 5.1: Originally "ACP Streaming" with Agent SDK. Pivoted to "MCP Cron Tools" with CLI spawner after SDK issues.
 - Phase 7.1 inserted: Memory Search MCP (URGENT) - embeddings exist but Claude can't search them, need SQLite + MCP tool
+- Phase 8 added: CLI Theme System - consistent output formatting with helper methods and unified color scheme
 
 ### Pending Todos
 
@@ -113,7 +119,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Phase 7 complete, ready for Phase 7.1
+Stopped at: Completed 07.1-01-PLAN.md, ready for 07.1-02
 Resume file: None
 
 ---
