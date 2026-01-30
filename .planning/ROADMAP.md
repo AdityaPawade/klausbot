@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5.1: MCP Cron Tools** - Typed MCP tools for cron management via CLI spawner (INSERTED)
 - [x] **Phase 6: Multimodal** - Voice transcription and image analysis
 - [x] **Phase 7: Resilience & Tooling** - Timeout recovery, skills cleanup, agent authoring
-- [ ] **Phase 7.1: Memory Search MCP** - Migrate embeddings to SQLite, add search_memories MCP tool (INSERTED)
+- [x] **Phase 7.1: Memory Search MCP** - Migrate embeddings to SQLite, add search_memories MCP tool (INSERTED)
 - [ ] **Phase 8: CLI Theme System** - Consistent output formatting with helper methods and unified color scheme
 
 ## Phase Details
@@ -231,8 +231,8 @@ Plans:
 
 Plans:
 
-- [ ] 07.1-01-PLAN.md — SQLite vector storage: better-sqlite3 + sqlite-vec, migration
-- [ ] 07.1-02-PLAN.md — MCP tool: search_memories with date filtering
+- [x] 07.1-01-PLAN.md — SQLite vector storage: better-sqlite3 + sqlite-vec, migration
+- [x] 07.1-02-PLAN.md — MCP tool: search_memories with date filtering
 
 ### Phase 8: CLI Theme System
 
@@ -268,7 +268,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 5.1 MCP Cron     | 2/2            | Complete    | 2026-01-30 |
 | 6. Multimodal    | 5/5            | Complete    | 2026-01-30 |
 | 7. Resilience    | 4/4            | Complete    | 2026-01-30 |
-| 7.1 Memory Search| 0/2            | Not started | -          |
+| 7.1 Memory Search| 2/2            | Complete    | 2026-01-30 |
 | 8. CLI Theme     | 0/?            | Not started | -          |
 
 ---
