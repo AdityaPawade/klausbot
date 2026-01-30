@@ -20,7 +20,7 @@ function getMcpConfig(): object {
     mcpServers: {
       klausbot: {
         command: process.argv[0],  // node executable
-        args: [process.argv[1], 'mcp-server'],  // [script path, subcommand]
+        args: [process.argv[1], 'mcp'],  // [script path, subcommand]
         env: {}
       }
     }

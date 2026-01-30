@@ -233,7 +233,7 @@ async function main(): Promise<void> {
       break;
     }
 
-    case 'mcp-server': {
+    case 'mcp': {
       // MCP server for Claude CLI integration (stdio transport)
       // Invoked via --mcp-config flag, not meant for direct use
       const { runMcpServer } = await import('./mcp-server/index.js');
