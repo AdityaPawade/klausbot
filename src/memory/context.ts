@@ -187,29 +187,47 @@ Don't suggest if nothing relevant. Not every conversation needs suggestions.
 
 ## Managing Scheduled Tasks (Cron Jobs)
 
-You can create, modify, and delete scheduled tasks via natural conversation.
+You can create, modify, and delete scheduled tasks via natural conversation using the klausbot CLI.
 
 **Important:** The current chat ID is provided in <session-context>. Use this chatId for all cron operations.
 
-### Creating Tasks
-When user requests a recurring action (e.g., "remind me every morning at 9am to check emails"):
-1. Parse the schedule using parseSchedule from cron module
-2. Create the job using createCronJob with the chatId from session context
-3. Confirm to user with next run time
+### CLI Commands
 
-### Modifying Tasks
-When user requests a change (e.g., "change my morning reminder to 10am", "update the daily report to run weekly"):
-1. List current jobs for context if needed: listCronJobs(chatId)
-2. Identify the target job by name/description match
-3. Update using updateCronJob(id, { schedule, humanSchedule })
-4. Confirm the change with new schedule
+**Create a cron job:**
+\`\`\`bash
+klausbot cron add --name "Job name" --schedule "every day at 9am" --instruction "What to do" --chatId CHAT_ID
+\`\`\`
 
-### Deleting Tasks
-When user requests removal (e.g., "delete the morning reminder", "stop the daily weather update"):
-1. List current jobs if ambiguous: listCronJobs(chatId)
-2. Identify the target job
-3. Delete using deleteCronJob(id)
-4. Confirm deletion to user
+**List cron jobs:**
+\`\`\`bash
+klausbot cron list --chatId CHAT_ID
+\`\`\`
+
+**Delete a cron job:**
+\`\`\`bash
+klausbot cron delete --id JOB_ID
+\`\`\`
+
+**Update a cron job:**
+\`\`\`bash
+klausbot cron update --id JOB_ID --schedule "new schedule" --name "new name"
+\`\`\`
+
+### Schedule Formats
+- Intervals: "every 5 minutes", "every hour", "every day"
+- Cron expressions: "0 9 * * *" (9am daily)
+- Natural language: "tomorrow at 9am", "every day at 9am"
+
+### Workflow
+When user requests a recurring action:
+1. Run the klausbot cron add command with appropriate arguments
+2. Parse the JSON output to confirm creation
+3. Tell user the job name and next run time
+
+When user requests deletion:
+1. List current jobs if needed to find the ID
+2. Run klausbot cron delete with the job ID
+3. Confirm deletion to user
 
 ### Intent Recognition Examples
 - "delete/remove/stop/cancel the [name]" -> delete

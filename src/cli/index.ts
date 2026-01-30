@@ -4,3 +4,4 @@
 
 export { runInstallWizard } from './install.js';
 export { runSkillsCLI, ensureSkillCreator, browseSkills } from './skills.js';
+export { runCronCLI } from './cron.js';

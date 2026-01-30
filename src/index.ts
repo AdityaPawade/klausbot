@@ -227,6 +227,12 @@ async function main(): Promise<void> {
       break;
     }
 
+    case 'cron': {
+      const { runCronCLI } = await import('./cli/index.js');
+      await runCronCLI(args.slice(1));
+      break;
+    }
+
     case 'pairing':
       await handlePairing();
       break;
