@@ -32,6 +32,14 @@ function getVersion(): string {
 }
 
 /**
+ * Silence logging for CLI commands
+ * Must be called before importing config/logger
+ */
+function silenceLogs(): void {
+  process.env.LOG_LEVEL = 'silent';
+}
+
+/**
  * Format relative time for display
  */
 function formatAge(timestamp: number): string {
@@ -165,6 +173,7 @@ pairing
   .command('approve <code>')
   .description('Approve pairing request')
   .action(async (code: string) => {
+    silenceLogs();
     const { config } = await import('./config/index.js');
     const { initPairingStore } = await import('./pairing/index.js');
     const store = initPairingStore(config.DATA_DIR);
@@ -182,6 +191,7 @@ pairing
   .command('reject <code>')
   .description('Reject pairing request')
   .action(async (code: string) => {
+    silenceLogs();
     const { config } = await import('./config/index.js');
     const { initPairingStore } = await import('./pairing/index.js');
     const store = initPairingStore(config.DATA_DIR);
@@ -199,6 +209,7 @@ pairing
   .command('list')
   .description('List pending and approved users')
   .action(async () => {
+    silenceLogs();
     const { config } = await import('./config/index.js');
     const { initPairingStore } = await import('./pairing/index.js');
     const store = initPairingStore(config.DATA_DIR);
@@ -230,6 +241,7 @@ pairing
   .description('Revoke access for chat ID')
   .option('-f, --force', 'Skip confirmation prompt')
   .action(async (chatIdStr: string, options: { force?: boolean }) => {
+    silenceLogs();
     const { config } = await import('./config/index.js');
     const { initPairingStore } = await import('./pairing/index.js');
     const store = initPairingStore(config.DATA_DIR);

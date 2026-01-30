@@ -10,7 +10,7 @@ export const configSchema = z.object({
 
   /** Log level for pino logger */
   LOG_LEVEL: z
-    .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
+    .enum(['silent', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'])
     .default('info'),
 
   /** Directory for persistent data (queue, pairing, etc.) */
