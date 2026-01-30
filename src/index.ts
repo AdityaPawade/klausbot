@@ -9,6 +9,7 @@
 
 import { Command } from 'commander';
 import dotenv from 'dotenv';
+import pc from 'picocolors';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -128,10 +129,10 @@ program
     initializeHome(log);
     initializeIdentity(log);
 
-    console.log('Done!');
-    console.log('  ~/.klausbot/config/ (preserved)');
-    console.log('  ~/.klausbot/conversations/ (cleared)');
-    console.log('  ~/.klausbot/identity/ (reset)');
+    console.log(pc.green('Done!'));
+    console.log(`  ~/.klausbot/config/ ${pc.dim('(preserved)')}`);
+    console.log(`  ~/.klausbot/conversations/ ${pc.dim('(cleared)')}`);
+    console.log(`  ~/.klausbot/identity/ ${pc.dim('(reset)')}`);
   });
 
 // install command
@@ -218,16 +219,16 @@ pairing
     const pending = store.listPending();
     const approved = store.listApproved();
 
-    console.log('=== Pending Requests ===');
+    console.log(pc.cyan('=== Pending Requests ==='));
     if (pending.length === 0) {
       console.log('  (none)');
     } else {
       for (const req of pending) {
-        console.log(`  Code: ${req.code}  Chat: ${req.chatId}  User: ${req.username ?? 'N/A'}  Age: ${formatAge(req.requestedAt)}`);
+        console.log(`  Code: ${pc.yellow(req.code)}  Chat: ${req.chatId}  User: ${req.username ?? 'N/A'}  Age: ${formatAge(req.requestedAt)}`);
       }
     }
 
-    console.log('\n=== Approved Users ===');
+    console.log(pc.cyan('\n=== Approved Users ==='));
     if (approved.length === 0) {
       console.log('  (none)');
     } else {

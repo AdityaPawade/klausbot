@@ -3,6 +3,7 @@
  * Used by Claude to create/list/delete cron jobs via bash commands
  */
 
+import pc from 'picocolors';
 import {
   createCronJob,
   listCronJobs,
@@ -123,7 +124,7 @@ function handleList(args: string[]): void {
     return;
   }
 
-  console.log(`=== Cron Jobs (${jobs.length}) ===\n`);
+  console.log(pc.cyan(`=== Cron Jobs (${jobs.length}) ===\n`));
   for (const job of jobs) {
     const status = job.enabled ? '✓' : '○';
     const nextRun = job.nextRunAtMs
