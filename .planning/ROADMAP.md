@@ -234,7 +234,7 @@ Plans:
 
 - [x] 07.1-01-PLAN.md — SQLite vector storage: better-sqlite3 + sqlite-vec, migration
 - [x] 07.1-02-PLAN.md — MCP tool: search_memories with date filtering
-- [ ] 07.1-03-PLAN.md — Gap closure: add logging to MCP server tools
+- [x] 07.1-03-PLAN.md — Gap closure: add logging to MCP server tools
 
 ### Phase 8: CLI Theme System
 
@@ -270,7 +270,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 5.1 MCP Cron     | 2/2            | Complete    | 2026-01-30 |
 | 6. Multimodal    | 5/5            | Complete    | 2026-01-30 |
 | 7. Resilience    | 4/4            | Complete    | 2026-01-30 |
-| 7.1 Memory Search| 2/3            | In progress | -          |
+| 7.1 Memory Search| 3/3            | Complete    | 2026-01-30 |
 | 8. CLI Theme     | 0/?            | Not started | -          |
 
 ---
