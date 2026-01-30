@@ -7,7 +7,7 @@ import type { Logger } from 'pino';
 export const KLAUSBOT_HOME = join(homedir(), '.klausbot');
 
 /** Subdirectories to create under KLAUSBOT_HOME */
-export const DIRS = ['config', 'conversations', 'identity', 'cron'] as const;
+export const DIRS = ['config', 'conversations', 'identity', 'cron', 'images'] as const;
 
 /**
  * Initialize the klausbot home directory structure
