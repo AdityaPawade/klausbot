@@ -3,4 +3,4 @@
  */
 
 export { runInstallWizard } from './install.js';
-export { runSkillsCLI, ensureSkillCreator } from './skills.js';
+export { runSkillsCLI, ensureSkillCreator, browseSkills } from './skills.js';
