@@ -78,19 +78,23 @@ program
   .option('-f, --force', 'Skip confirmation prompt')
   .action(async (options: { force?: boolean }) => {
     const { existsSync } = await import('fs');
+    const { confirm } = await import('@inquirer/prompts');
     const { createChildLogger } = await import('./utils/logger.js');
     const { initializeHome, initializeIdentity, KLAUSBOT_HOME } = await import('./memory/index.js');
 
-    // Check if already exists
-    if (existsSync(KLAUSBOT_HOME) && !options.force) {
-      const { confirm } = await import('@inquirer/prompts');
-      console.log(`\n⚠️  ${KLAUSBOT_HOME} already exists.`);
-      console.log('This will reset identity files (SOUL.md, IDENTITY.md, USER.md).');
-      console.log('Conversations and config will be preserved.\n');
+    const alreadyExists = existsSync(KLAUSBOT_HOME);
+
+    // Prompt for confirmation (unless --force)
+    if (!options.force) {
+      if (alreadyExists) {
+        console.log(`\n⚠️  ${KLAUSBOT_HOME} already exists.`);
+        console.log('This will reset identity files (SOUL.md, IDENTITY.md, USER.md).');
+        console.log('Conversations and config will be preserved.\n');
+      }
 
       const confirmed = await confirm({
-        message: 'Continue with reset?',
-        default: false,
+        message: alreadyExists ? 'Continue with reset?' : `Initialize klausbot at ${KLAUSBOT_HOME}?`,
+        default: !alreadyExists, // Default yes for fresh, no for reset
       });
 
       if (!confirmed) {
@@ -100,7 +104,7 @@ program
     }
 
     const log = createChildLogger('init');
-    console.log(`Initializing klausbot data home at ${KLAUSBOT_HOME}...`);
+    console.log(`\nInitializing klausbot data home at ${KLAUSBOT_HOME}...`);
 
     initializeHome(log);
     initializeIdentity(log);
