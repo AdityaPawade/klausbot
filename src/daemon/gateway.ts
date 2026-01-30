@@ -26,8 +26,11 @@ import {
   isTranscriptionAvailable,
   saveImage,
   withRetry,
+  downloadFile,
 } from '../media/index.js';
 import { unlinkSync } from 'fs';
+import os from 'os';
+import path from 'path';
 
 const log = createChildLogger('gateway');
 
@@ -167,6 +170,12 @@ export async function startGateway(): Promise<void> {
   initializeHome(log);
   initializeEmbeddings();
 
+  // Log media capabilities
+  log.info({
+    voiceTranscription: isTranscriptionAvailable(),
+    imageAnalysis: true,  // Always available (Claude vision)
+  }, 'Media capabilities');
+
   // Initialize cron system
   startScheduler();
   log.info({ jobs: loadCronStore().jobs.filter(j => j.enabled).length }, 'Cron scheduler initialized');
@@ -269,9 +278,110 @@ export async function startGateway(): Promise<void> {
     });
   });
 
-  // Handle non-text messages
+  // Voice message handler
+  bot.on('message:voice', async (ctx: MyContext) => {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    const voice = ctx.message?.voice;
+    if (!voice) return;
+
+    log.info({ chatId, fileId: voice.file_id, duration: voice.duration }, 'Received voice message');
+
+    // Download voice file to temp location
+    const tempPath = path.join(os.tmpdir(), `klausbot-voice-${Date.now()}.ogg`);
+
+    try {
+      await downloadFile(bot, voice.file_id, tempPath);
+
+      const media: MediaAttachment[] = [{
+        type: 'voice',
+        fileId: voice.file_id,
+        localPath: tempPath,
+        mimeType: voice.mime_type,
+      }];
+
+      // Voice messages don't have captions in Telegram
+      const text = '';
+
+      const queueId = queue.add(chatId, text, media);
+      log.info({ chatId, queueId, mediaCount: 1 }, 'Voice message queued');
+
+      processQueue().catch((err) => {
+        log.error({ err }, 'Queue processing error');
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error({ err, chatId }, 'Failed to download voice message');
+      await ctx.reply(`Failed to process voice message: ${msg}`);
+    }
+  });
+
+  // Photo message handler
+  bot.on('message:photo', async (ctx: MyContext) => {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    const photos = ctx.message?.photo;
+    if (!photos || photos.length === 0) return;
+
+    // Get largest photo (last in array)
+    const largest = photos[photos.length - 1];
+
+    log.info({
+      chatId,
+      fileId: largest.file_id,
+      width: largest.width,
+      height: largest.height
+    }, 'Received photo message');
+
+    // Download photo to temp location
+    const tempPath = path.join(os.tmpdir(), `klausbot-photo-${Date.now()}.jpg`);
+
+    try {
+      await downloadFile(bot, largest.file_id, tempPath);
+
+      const media: MediaAttachment[] = [{
+        type: 'photo',
+        fileId: largest.file_id,
+        localPath: tempPath,
+      }];
+
+      // Get caption if any
+      const text = ctx.message?.caption ?? '';
+
+      const queueId = queue.add(chatId, text, media);
+      log.info({ chatId, queueId, mediaCount: 1, hasCaption: !!text }, 'Photo message queued');
+
+      processQueue().catch((err) => {
+        log.error({ err }, 'Queue processing error');
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error({ err, chatId }, 'Failed to download photo');
+      await ctx.reply(`Failed to process photo: ${msg}`);
+    }
+  });
+
+  // Media group handler (multiple photos in one message)
+  // Note: grammY fires message:photo for each photo in a media group
+  // We handle them individually - they'll be queued separately
+  // Future enhancement: collect media groups using message.media_group_id
+
+  // Catch-all for unsupported message types
   bot.on('message', async (ctx: MyContext) => {
-    await ctx.reply('I only understand text messages for now.');
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    const messageType = Object.keys(ctx.message ?? {}).find(
+      (key) => !['message_id', 'from', 'chat', 'date', 'text', 'voice', 'photo', 'caption', 'entities'].includes(key)
+    );
+
+    log.info({ chatId, messageType }, 'Received unsupported message type');
+
+    await ctx.reply(
+      'I can process text, voice messages, and photos. Other message types are not yet supported.'
+    );
   });
 
   // Start processing loop in background

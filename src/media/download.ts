@@ -31,7 +31,7 @@ export function hydrateFilesOnBot(bot: Bot, token: string): void {
  * @throws Error if download fails
  */
 export async function downloadFile(
-  bot: Bot,
+  bot: Bot<any>,
   fileId: string,
   destPath: string
 ): Promise<string> {
