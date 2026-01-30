@@ -15,6 +15,7 @@
   "dependencies": {
     "@grammyjs/auto-chat-action": "^0.1.1",
     "@grammyjs/auto-retry": "^2.0.2",
+    "@grammyjs/files": "^1.2.0",
     "@grammyjs/runner": "^2.0.3",
     "@inquirer/prompts": "^7.2.1",
     "@modelcontextprotocol/sdk": "^1.25.3",
