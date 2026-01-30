@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4.1: Skills Polish** - Skill registry and system prompt enhancements (INSERTED)
 - [ ] **Phase 5: Proactive** - Cron scheduling and self-evolution system
 - [ ] **Phase 6: Multimodal** - Voice transcription and image analysis
+- [ ] **Phase 7: Resilience & Tooling** - Timeout recovery, skills cleanup, agent authoring
 
 ## Phase Details
 
@@ -164,10 +165,32 @@ Plans:
 
 - [ ] 06-01: TBD
 
+### Phase 7: Resilience & Tooling
+
+**Goal**: Recover work from timed-out sessions, simplify skill management, enable agent authoring
+**Depends on**: Phase 5
+**Requirements**: None (bug fixes and enhancements)
+**Success Criteria** (what must be TRUE):
+
+1. When Claude times out (>5 min), system recovers response from transcript at `~/.claude/projects/`
+2. Transcript path constructed dynamically from cwd (e.g., `/home/user/klausbot` → `-home-user-klausbot`)
+3. `klausbot skills` CLI subcommand removed entirely
+4. Documentation points to `npx skills` for external skill installation
+5. User can describe agent in natural language, Claude creates `~/.claude/agents/{name}.md`
+6. System prompt reminds Claude that agents live in global `~/.claude/agents/` folder
+**Plans**: 4 plans in 3 waves
+
+Plans:
+
+- [ ] 07-01-PLAN.md — Timeout recovery: transcript path construction, JSONL parsing
+- [ ] 07-02-PLAN.md — Skills cleanup: remove CLI subcommand, add documentation
+- [ ] 07-03-PLAN.md — Agent authoring: natural language → agent definition file
+- [ ] 07-04-PLAN.md — End-to-end verification (human checkpoint)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 (Phase 6 can parallelize with Phase 3-5 if prioritized)
 
 | Phase            | Plans Complete | Status      | Completed  |
@@ -179,6 +202,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 4.1 Skills Polish| 2/2            | Complete    | 2026-01-30 |
 | 5. Proactive     | 0/5            | Not started | -          |
 | 6. Multimodal    | 0/TBD          | Not started | -          |
+| 7. Resilience    | 0/4            | Not started | -          |
 
 ---
 
