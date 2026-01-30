@@ -12,6 +12,9 @@ import {
   parseSchedule,
 } from '../cron/index.js';
 import { initializeHome } from '../memory/home.js';
+import { createChildLogger } from '../utils/logger.js';
+
+const log = createChildLogger('cron-cli');
 
 /**
  * Run the cron CLI
@@ -21,7 +24,7 @@ export async function runCronCLI(args: string[]): Promise<void> {
   const command = args[0];
 
   // Initialize home directory (ensures cron dir exists)
-  initializeHome();
+  initializeHome(log);
 
   switch (command) {
     case 'add':
