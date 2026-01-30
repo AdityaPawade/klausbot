@@ -13,6 +13,9 @@ export type { ClaudeResponse, SpawnerOptions } from './spawner.js';
 // Re-export gateway functions
 export { startGateway, stopGateway } from './gateway.js';
 
+// Re-export media types for consumers
+export type { MediaAttachment } from '../media/index.js';
+
 /**
  * Ensure a data directory exists
  * Creates .gitkeep file if directory is empty (for git tracking of structure)
