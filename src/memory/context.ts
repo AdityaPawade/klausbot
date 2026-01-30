@@ -174,15 +174,28 @@ If user says "be proactive" - that means proactive BEHAVIOR (offering help, reme
 }
 
 /**
+ * Get skill folder reminder for system prompt
+ * Tells Claude where to create and save skills
+ *
+ * @returns Skill folder reminder wrapped in XML tags
+ */
+export function getSkillReminder(): string {
+  return `<skill-folder>
+Skills live in ~/.claude/skills/ — create and save skills there.
+</skill-folder>`;
+}
+
+/**
  * Build the complete system prompt for Claude sessions
- * Combines identity files + retrieval instructions
+ * Combines skill reminder + identity files + retrieval instructions
  *
  * @returns Complete system prompt string
  */
 export function buildSystemPrompt(): string {
+  const skillReminder = getSkillReminder();
   const identity = loadIdentity();
   const instructions = getRetrievalInstructions();
 
-  // Combine with double newline separator
-  return identity + '\n\n' + instructions;
+  // Skill reminder first (Claude sees this first), then identity, then instructions
+  return skillReminder + '\n\n' + identity + '\n\n' + instructions;
 }
