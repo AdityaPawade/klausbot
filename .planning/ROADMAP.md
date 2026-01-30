@@ -181,11 +181,15 @@ Plans:
 1. User sends voice message, bot transcribes and responds to content
 2. User sends image, bot analyzes and describes/acts on content
 3. Voice/image processing errors surfaced clearly (codec issues, API failures)
-   **Plans**: TBD
+**Plans**: 5 plans in 4 waves
 
 Plans:
 
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — Media foundation: types, download, transcription
+- [ ] 06-02-PLAN.md — Image storage and module exports
+- [ ] 06-03-PLAN.md — Queue and gateway media integration
+- [ ] 06-04-PLAN.md — Telegram voice/photo handlers
+- [ ] 06-05-PLAN.md — End-to-end verification (human checkpoint)
 
 ### Phase 7: Resilience & Tooling
 
@@ -224,7 +228,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4.1 Skills Polish| 2/2            | Complete    | 2026-01-30 |
 | 5. Proactive     | 4/5            | In progress | -          |
 | 5.1 MCP Cron     | 2/2            | Complete    | 2026-01-30 |
-| 6. Multimodal    | 0/TBD          | Not started | -          |
+| 6. Multimodal    | 0/5            | Planned     | -          |
 | 7. Resilience    | 0/4            | Not started | -          |
 
 ---
