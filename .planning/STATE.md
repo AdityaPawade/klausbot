@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-28)
 
 **Core value:** 24/7 personal assistant that never forgets, never loses context, and self-improves through use.
-**Current focus:** Phase 7.1 - Memory Search MCP (Plan 01 complete)
+**Current focus:** Phase 7.1 complete - Memory Search MCP
 
 ## Current Position
 
 Phase: 7.1 of 7.1 (Memory Search MCP)
-Plan: 1 of 2 in Phase 7.1
-Status: In progress
-Last activity: 2026-01-30 - Completed 07.1-01-PLAN.md (SQLite Vector Storage)
+Plan: 2 of 2 in Phase 7.1
+Status: Phase complete
+Last activity: 2026-01-30 - Completed 07.1-02-PLAN.md (MCP Memory Search Tool)
 
-Progress: [██████████] 100% (36/37 plans complete)
+Progress: [██████████] 100% (37/37 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 36
-- Average duration: ~4.6 min (excluding human verification time)
-- Total execution time: ~173 min
+- Total plans completed: 37
+- Average duration: ~4.5 min (excluding human verification time)
+- Total execution time: ~175 min
 
 **By Phase:**
 
@@ -36,11 +36,11 @@ Progress: [██████████] 100% (36/37 plans complete)
 | 05.1-mcp-cron | 2/2 | ~5 min | 2.5 min |
 | 06-multimodal | 5/5 | ~11 min | 2.2 min |
 | 07-resilience-tooling | 4/4 | ~52 min | 13 min |
-| 07.1-memory-search-mcp | 1/2 | 12 min | 12 min |
+| 07.1-memory-search-mcp | 2/2 | 14 min | 7 min |
 
 **Recent Trend:**
-- Last 5 plans: 07-02 (~2 min), 07-03 (~2 min), 07-04 (~45 min), 07.1-01 (12 min)
-- Trend: 07.1-01 included sqlite-vec API debugging
+- Last 5 plans: 07-03 (~2 min), 07-04 (~45 min), 07.1-01 (12 min), 07.1-02 (2 min)
+- Trend: Phase 7.1 completed - memory search now available to Claude
 
 *Updated after each plan completion*
 
@@ -100,6 +100,9 @@ Recent decisions affecting current work:
 - 07.1-01: BigInt(rowid) required for vec0 virtual table inserts
 - 07.1-01: Float32Array directly (not .buffer) for vector data
 - 07.1-01: initializeEmbeddings() kept as no-op for API compatibility
+- 07.1-02: Use k = ? constraint for sqlite-vec KNN (not LIMIT)
+- 07.1-02: Score as 1/(1+distance) for intuitive percentage display
+- 07.1-02: MCP tool registration pattern: registerXTools(server)
 
 ### Roadmap Evolution
 
@@ -119,7 +122,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed 07.1-01-PLAN.md, ready for 07.1-02
+Stopped at: Completed 07.1-02-PLAN.md - Phase 7.1 complete
 Resume file: None
 
 ---
