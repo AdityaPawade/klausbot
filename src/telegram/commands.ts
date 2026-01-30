@@ -2,6 +2,7 @@ import { bot, type MyContext } from './bot.js';
 import { handleStartCommand, getPairingStore } from '../pairing/index.js';
 import type { MessageQueue } from '../daemon/queue.js';
 import { createChildLogger } from '../utils/index.js';
+import { listCronJobs } from '../cron/index.js';
 
 const log = createChildLogger('commands');
 
@@ -67,6 +68,7 @@ export function setupCommands(queue?: MessageQueue): void {
       '/start - Request pairing or check status',
       '/status - Show queue and approval status',
       '/model - Show current model info',
+      '/crons - List scheduled tasks',
       '/help - Show this help message',
       '',
       'Send any message to chat with Claude.',
@@ -75,5 +77,38 @@ export function setupCommands(queue?: MessageQueue): void {
     await ctx.reply(helpMsg, { parse_mode: 'Markdown' });
   });
 
-  log.info('Commands registered: /start, /model, /status, /help');
+  // /crons - list scheduled tasks
+  bot.command('crons', async (ctx: MyContext) => {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    log.info({ chatId }, '/crons command invoked');
+
+    const jobs = listCronJobs(chatId);
+    const enabledJobs = jobs.filter(j => j.enabled);
+
+    if (enabledJobs.length === 0) {
+      await ctx.reply(
+        'No scheduled tasks.\n\nCreate one with natural language, e.g.:\n"Remind me every morning at 9am to check emails"'
+      );
+      return;
+    }
+
+    const lines = enabledJobs.map(job => {
+      const nextRun = job.nextRunAtMs
+        ? new Date(job.nextRunAtMs).toLocaleString()
+        : 'never';
+      const status = job.lastStatus
+        ? ` (last: ${job.lastStatus})`
+        : '';
+      return `- *${job.name}*: ${job.humanSchedule}\n  Next: ${nextRun}${status}`;
+    });
+
+    await ctx.reply(
+      `*Scheduled Tasks*\n\n${lines.join('\n\n')}\n\n_Modify or delete via conversation_`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  log.info('Commands registered: /start, /model, /status, /help, /crons');
 }

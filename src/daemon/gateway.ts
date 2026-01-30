@@ -111,6 +111,7 @@ export async function startGateway(): Promise<void> {
       '/start - Request pairing or check status',
       '/status - Show queue and approval status',
       '/model - Show current model info',
+      '/crons - List scheduled tasks',
       '/help - Show this help message',
       '',
       'Send any message to chat with Claude.',
