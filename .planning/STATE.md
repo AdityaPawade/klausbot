@@ -86,6 +86,7 @@ Recent decisions affecting current work:
 
 - Phase 7 added: Resilience & Tooling (timeout recovery, skills cleanup, agent authoring)
 - Phase 5.1: Originally "ACP Streaming" with Agent SDK. Pivoted to "MCP Cron Tools" with CLI spawner after SDK issues.
+- Phase 7.1 inserted: Memory Search MCP (URGENT) - embeddings exist but Claude can't search them, need SQLite + MCP tool
 
 ### Pending Todos
 
