@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Proactive** - Cron scheduling and self-evolution system
 - [x] **Phase 5.1: MCP Cron Tools** - Typed MCP tools for cron management via CLI spawner (INSERTED)
 - [x] **Phase 6: Multimodal** - Voice transcription and image analysis
-- [ ] **Phase 7: Resilience & Tooling** - Timeout recovery, skills cleanup, agent authoring
+- [x] **Phase 7: Resilience & Tooling** - Timeout recovery, skills cleanup, agent authoring
 - [ ] **Phase 7.1: Memory Search MCP** - Migrate embeddings to SQLite, add search_memories MCP tool (INSERTED)
 
 ## Phase Details
@@ -209,10 +209,10 @@ Plans:
 
 Plans:
 
-- [ ] 07-01-PLAN.md — Timeout recovery: transcript path construction, JSONL parsing
-- [ ] 07-02-PLAN.md — Skills cleanup: remove CLI subcommand, add documentation
-- [ ] 07-03-PLAN.md — Agent authoring: natural language -> agent definition file
-- [ ] 07-04-PLAN.md — End-to-end verification (human checkpoint)
+- [x] 07-01-PLAN.md — Timeout recovery: transcript path construction, JSONL parsing
+- [x] 07-02-PLAN.md — Skills cleanup: remove CLI subcommand, add documentation
+- [x] 07-03-PLAN.md — Agent authoring: natural language -> agent definition file
+- [x] 07-04-PLAN.md — End-to-end verification (human checkpoint)
 
 ### Phase 7.1: Memory Search MCP (INSERTED)
 
@@ -247,7 +247,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 5. Proactive     | 4/5            | In progress | -          |
 | 5.1 MCP Cron     | 2/2            | Complete    | 2026-01-30 |
 | 6. Multimodal    | 5/5            | Complete    | 2026-01-30 |
-| 7. Resilience    | 0/4            | Not started | -          |
+| 7. Resilience    | 4/4            | Complete    | 2026-01-30 |
 | 7.1 Memory Search| 0/?            | Not started | -          |
 
 ---
