@@ -33,12 +33,18 @@ export {
   reloadIdentity,
 } from './context.js';
 
+// Database management
+export { getDb, closeDb } from './db.js';
+
 // Embedding generation and storage
 export {
   generateEmbedding,
   storeEmbedding,
   initializeEmbeddings,
 } from './embeddings.js';
+
+// Migration from JSON to SQLite
+export { migrateEmbeddings } from './migrate.js';
 
 // Semantic search
 export { semanticSearch, cosineSimilarity } from './search.js';

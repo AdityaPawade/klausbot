@@ -13,6 +13,8 @@ import { autoCommitChanges } from '../utils/git.js';
 import {
   initializeHome,
   initializeEmbeddings,
+  migrateEmbeddings,
+  closeDb,
   logUserMessage,
   logAssistantMessage,
   invalidateIdentityCache,
@@ -168,6 +170,9 @@ export async function startGateway(): Promise<void> {
   // NOTE: Do NOT call initializeIdentity() here - bootstrap flow creates identity files
   initializeHome(log);
   initializeEmbeddings();
+
+  // Migrate embeddings from JSON to SQLite (idempotent)
+  await migrateEmbeddings();
 
   // Log media capabilities
   log.info({
@@ -413,6 +418,9 @@ export async function stopGateway(): Promise<void> {
 
   // Stop cron scheduler
   stopScheduler();
+
+  // Close database connection
+  closeDb();
 
   // Wait for current processing to finish (max 30s)
   const timeout = 30000;
