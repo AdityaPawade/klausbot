@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-28)
 ## Current Position
 
 Phase: 4.1 of 7 (Skills Polish)
-Plan: 1 of 2 in Phase 4.1
-Status: In progress
-Last activity: 2026-01-30 - Completed 04.1-01-PLAN.md (skill folder reminder)
+Plan: 2 of 2 in Phase 4.1
+Status: Phase complete
+Last activity: 2026-01-30 - Completed 04.1-02-PLAN.md (skills browse command)
 
-Progress: [█░░░░░░░░░] 10% (17/TBD plans complete)
+Progress: [██░░░░░░░░] 20% (18/TBD plans complete)
 
 ## Performance Metrics
 
@@ -31,10 +31,10 @@ Progress: [█░░░░░░░░░] 10% (17/TBD plans complete)
 | 02-core-loop | 4/4 | 13 min | 3.3 min |
 | 03-identity | 3/3 | ~12 min | 4 min |
 | 04-skills | 3/3 | ~35 min | 12 min |
-| 04.1-skills-polish | 1/2 | 2 min | 2 min |
+| 04.1-skills-polish | 2/2 | 4 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (2 min), 04-02 (2 min), 04-03 (30 min), 04.1-01 (2 min)
+- Last 5 plans: 04-02 (2 min), 04-03 (30 min), 04.1-01 (2 min), 04.1-02 (2 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -56,6 +56,8 @@ Recent decisions affecting current work:
 - 04-03: Pino multistream for console + file logging (logs/app.log)
 - 04.1-01: Skill reminder appears first in system prompt (before identity)
 - 04.1-01: Minimal wording: location only, no skill enumeration
+- 04.1-02: SHA256 content hash for skill version detection
+- 04.1-02: Empty contentHash = always up-to-date (no remote manifest)
 
 ### Pending Todos
 
@@ -68,7 +70,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed 04.1-01-PLAN.md
+Stopped at: Completed 04.1-02-PLAN.md (Phase 4.1 complete)
 Resume file: None
 
 ---
