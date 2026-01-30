@@ -6,6 +6,9 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { semanticSearch } from '../../memory/search.js';
+import { createChildLogger } from '../../utils/index.js';
+
+const log = createChildLogger('mcp:memory');
 
 /**
  * Register memory tools with MCP server
@@ -22,6 +25,7 @@ export function registerMemoryTools(server: McpServer): void {
     },
     async ({ query, limit, days_back }) => {
       try {
+        log.info({ query, limit, days_back }, 'search_memories called');
         const results = await semanticSearch(query, {
           topK: limit,
           daysBack: days_back,
@@ -43,6 +47,7 @@ export function registerMemoryTools(server: McpServer): void {
           return `[${i + 1}] (${score}% match, ${date})\n${r.text}`;
         }).join('\n\n');
 
+        log.info({ count: results.length }, 'search_memories completed');
         return {
           content: [{
             type: 'text' as const,
@@ -51,6 +56,7 @@ export function registerMemoryTools(server: McpServer): void {
         };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
+        log.error({ error: msg }, 'search_memories failed');
         return {
           content: [{
             type: 'text' as const,
