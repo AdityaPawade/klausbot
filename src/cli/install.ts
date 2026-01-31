@@ -8,6 +8,7 @@ import { input, confirm, select } from '@inquirer/prompts';
 import { execSync } from 'child_process';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { ensureSkillCreator } from './skills.js';
+import { theme } from './theme.js';
 
 /**
  * Check if a command exists
@@ -71,33 +72,34 @@ WantedBy=multi-user.target
  * Run the installation wizard
  */
 export async function runInstallWizard(): Promise<void> {
-  console.log(`
-=====================================
-    Klausbot Installation Wizard
-=====================================
-
-This wizard will help you configure klausbot for your environment.
-`);
+  theme.asciiArt();
+  theme.blank();
+  theme.header('Installation Wizard');
+  theme.blank();
+  theme.info('This wizard will help you configure klausbot for your environment.');
+  theme.blank();
 
   // Check prerequisites
-  console.log('Checking prerequisites...\n');
+  theme.info('Checking prerequisites...');
+  theme.blank();
 
   const hasClaudeCli = commandExists('claude');
   if (hasClaudeCli) {
-    console.log('  [OK] Claude CLI found');
+    theme.success('Claude CLI found');
   } else {
-    console.log('  [WARN] Claude CLI not found');
+    theme.warn('Claude CLI not found');
     const continueAnyway = await confirm({
       message: 'Claude CLI not detected. Continue anyway?',
       default: false,
     });
     if (!continueAnyway) {
-      console.log('\nInstall Claude CLI first: https://claude.ai/code');
+      theme.blank();
+      theme.info('Install Claude CLI first: https://claude.ai/code');
       process.exit(1);
     }
   }
 
-  console.log('');
+  theme.blank();
 
   // Prompt for bot token
   const botToken = await input({
@@ -138,13 +140,14 @@ This wizard will help you configure klausbot for your environment.
   }
 
   // Install skill-creator for Claude skill authoring
-  console.log('\nInstalling skill-creator...');
+  theme.blank();
+  theme.info('Installing skill-creator...');
   try {
     await ensureSkillCreator();
-    console.log('skill-creator installed to ~/.claude/skills/');
+    theme.success('skill-creator installed to ~/.claude/skills/');
   } catch (error) {
     // Non-fatal - user can install later
-    console.warn('Failed to install skill-creator (network error). Run install again later.');
+    theme.warn('Failed to install skill-creator (network error). Run install again later.');
   }
 }
 
@@ -154,7 +157,8 @@ This wizard will help you configure klausbot for your environment.
 async function handleSystemdInstall(botToken: string): Promise<void> {
   // Check systemd availability
   if (!commandExists('systemctl')) {
-    console.log('\nsystemd not available on this system.');
+    theme.blank();
+    theme.warn('systemd not available on this system.');
     const fallback = await select({
       message: 'Choose alternative:',
       choices: [
@@ -188,18 +192,19 @@ async function handleSystemdInstall(botToken: string): Promise<void> {
   const envContent = generateEnvContent(botToken, dataDir);
   const envPath = './.env';
 
-  console.log('\nGenerating configuration...');
+  theme.blank();
+  theme.info('Generating configuration...');
   writeFileSync(envPath, envContent);
-  console.log(`  Created: ${envPath}`);
+  theme.success(`Created: ${envPath}`);
 
   // Generate service file
   const serviceContent = generateServiceFile(installDir);
   const servicePath = './klausbot.service';
   writeFileSync(servicePath, serviceContent);
-  console.log(`  Created: ${servicePath}`);
+  theme.success(`Created: ${servicePath}`);
 
   // Ask to install now
-  console.log('');
+  theme.blank();
   const installNow = await confirm({
     message: 'Install and start systemd service now? (requires sudo)',
     default: false,
@@ -207,54 +212,65 @@ async function handleSystemdInstall(botToken: string): Promise<void> {
 
   if (installNow) {
     try {
-      console.log('\nInstalling systemd service...');
+      theme.blank();
+      theme.info('Installing systemd service...');
 
       // Create user if needed
       try {
         execSync('id klausbot', { stdio: 'pipe' });
       } catch {
-        console.log('  Creating klausbot user...');
+        theme.info('Creating klausbot user...');
         execSync('sudo useradd -r -s /bin/false klausbot', { stdio: 'inherit' });
       }
 
       // Create directories
-      console.log('  Creating directories...');
+      theme.info('Creating directories...');
       execSync(`sudo mkdir -p ${installDir}`, { stdio: 'inherit' });
       execSync(`sudo mkdir -p ${dataDir}`, { stdio: 'inherit' });
       execSync(`sudo chown -R klausbot:klausbot ${installDir}`, { stdio: 'inherit' });
 
       // Copy service file
-      console.log('  Installing service file...');
+      theme.info('Installing service file...');
       execSync(`sudo cp ${servicePath} /etc/systemd/system/klausbot.service`, { stdio: 'inherit' });
 
       // Reload and enable
-      console.log('  Enabling service...');
+      theme.info('Enabling service...');
       execSync('sudo systemctl daemon-reload', { stdio: 'inherit' });
       execSync('sudo systemctl enable klausbot', { stdio: 'inherit' });
       execSync('sudo systemctl start klausbot', { stdio: 'inherit' });
 
-      console.log('\n[SUCCESS] klausbot service installed and started!');
-      console.log('\nUseful commands:');
-      console.log('  sudo systemctl status klausbot   # Check status');
-      console.log('  sudo journalctl -u klausbot -f   # View logs');
-      console.log('  sudo systemctl restart klausbot  # Restart');
+      theme.blank();
+      theme.success('klausbot service installed and started!');
+      theme.blank();
+      theme.header('Useful commands');
+      theme.list([
+        'sudo systemctl status klausbot   # Check status',
+        'sudo journalctl -u klausbot -f   # View logs',
+        'sudo systemctl restart klausbot  # Restart',
+      ], { indent: 2 });
     } catch (err) {
-      console.error('\nInstallation failed. You can install manually:');
-      console.log(`  1. Copy files to ${installDir}`);
-      console.log(`  2. sudo cp ${servicePath} /etc/systemd/system/`);
-      console.log('  3. sudo systemctl daemon-reload');
-      console.log('  4. sudo systemctl enable --now klausbot');
+      theme.blank();
+      theme.error('Installation failed. You can install manually:');
+      theme.list([
+        `Copy files to ${installDir}`,
+        `sudo cp ${servicePath} /etc/systemd/system/`,
+        'sudo systemctl daemon-reload',
+        'sudo systemctl enable --now klausbot',
+      ], { indent: 2 });
     }
   } else {
-    console.log('\nManual installation steps:');
-    console.log(`  1. Copy project files to ${installDir}`);
-    console.log(`  2. Copy .env to ${installDir}/.env`);
-    console.log(`  3. sudo cp ${servicePath} /etc/systemd/system/`);
-    console.log('  4. sudo useradd -r -s /bin/false klausbot');
-    console.log(`  5. sudo mkdir -p ${dataDir}`);
-    console.log(`  6. sudo chown -R klausbot:klausbot ${installDir}`);
-    console.log('  7. sudo systemctl daemon-reload');
-    console.log('  8. sudo systemctl enable --now klausbot');
+    theme.blank();
+    theme.header('Manual Installation');
+    theme.list([
+      `Copy project files to ${installDir}`,
+      `Copy .env to ${installDir}/.env`,
+      `sudo cp ${servicePath} /etc/systemd/system/`,
+      'sudo useradd -r -s /bin/false klausbot',
+      `sudo mkdir -p ${dataDir}`,
+      `sudo chown -R klausbot:klausbot ${installDir}`,
+      'sudo systemctl daemon-reload',
+      'sudo systemctl enable --now klausbot',
+    ], { indent: 2 });
   }
 }
 
@@ -264,7 +280,8 @@ async function handleSystemdInstall(botToken: string): Promise<void> {
 async function handleDockerInstall(botToken: string): Promise<void> {
   // Check docker availability
   if (!commandExists('docker')) {
-    console.log('\n[ERROR] Docker not found. Please install Docker first.');
+    theme.blank();
+    theme.error('Docker not found. Please install Docker first.');
     process.exit(1);
   }
 
@@ -277,27 +294,32 @@ async function handleDockerInstall(botToken: string): Promise<void> {
   const envContent = generateEnvContent(botToken, '/app/data');
   const envPath = './.env';
 
-  console.log('\nGenerating configuration...');
+  theme.blank();
+  theme.info('Generating configuration...');
   writeFileSync(envPath, envContent);
-  console.log(`  Created: ${envPath}`);
+  theme.success(`Created: ${envPath}`);
 
   // Ensure data dir exists
   if (!existsSync(dataDir)) {
     mkdirSync(dataDir, { recursive: true });
-    console.log(`  Created: ${dataDir}/`);
+    theme.success(`Created: ${dataDir}/`);
   }
 
-  console.log('\nDocker deployment ready!');
-  console.log('\nBuild and run:');
-  console.log('  docker build -t klausbot .');
-  console.log(`  docker run -d --name klausbot \\`);
-  console.log('    --env-file .env \\');
-  console.log(`    -v ${dataDir}:/app/data \\`);
-  console.log('    klausbot');
-  console.log('\nManagement:');
-  console.log('  docker logs -f klausbot   # View logs');
-  console.log('  docker restart klausbot   # Restart');
-  console.log('  docker stop klausbot      # Stop');
+  theme.blank();
+  theme.success('Docker deployment ready!');
+  theme.blank();
+  theme.header('Build and run');
+  theme.list([
+    'docker build -t klausbot .',
+    `docker run -d --name klausbot --env-file .env -v ${dataDir}:/app/data klausbot`,
+  ], { indent: 2 });
+  theme.blank();
+  theme.header('Management');
+  theme.list([
+    'docker logs -f klausbot   # View logs',
+    'docker restart klausbot   # Restart',
+    'docker stop klausbot      # Stop',
+  ], { indent: 2 });
 }
 
 /**
@@ -313,20 +335,28 @@ async function handleDevInstall(botToken: string): Promise<void> {
   const envContent = generateEnvContent(botToken, dataDir);
   const envPath = './.env';
 
-  console.log('\nGenerating configuration...');
+  theme.blank();
+  theme.info('Generating configuration...');
   writeFileSync(envPath, envContent);
-  console.log(`  Created: ${envPath}`);
+  theme.success(`Created: ${envPath}`);
 
   // Ensure data dir exists
   if (!existsSync(dataDir)) {
     mkdirSync(dataDir, { recursive: true });
-    console.log(`  Created: ${dataDir}/`);
+    theme.success(`Created: ${dataDir}/`);
   }
 
-  console.log('\nDevelopment mode ready!');
-  console.log('\nRun klausbot:');
-  console.log('  npm run dev');
-  console.log('\nOr for production build:');
-  console.log('  npm run build');
-  console.log('  npm start');
+  theme.blank();
+  theme.success('Development mode ready!');
+  theme.blank();
+  theme.header('Run klausbot');
+  theme.list([
+    'npm run dev',
+  ], { indent: 2 });
+  theme.blank();
+  theme.header('Production build');
+  theme.list([
+    'npm run build',
+    'npm start',
+  ], { indent: 2 });
 }
