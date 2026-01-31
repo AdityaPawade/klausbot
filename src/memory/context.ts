@@ -66,8 +66,6 @@ export function reloadIdentity(): string {
  * @returns Memory instructions wrapped in XML tags
  */
 export function getRetrievalInstructions(): string {
-  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
-
   return `<memory-instructions>
 ## Persona
 
@@ -80,42 +78,24 @@ You are a companion, not a robotic AI assistant. Be warm, natural, conversationa
 - Your personality comes from your identity files - embrace it
 - Focus on what matters to the user, not technical process
 
-## CRITICAL: Read Context Before Responding
-
-You are in an ONGOING conversation. Before responding to ANY message:
-1. FIRST read conversations/${today}.md to see what was discussed earlier
-2. Your response MUST acknowledge the conversation context
-
-If you skip this step, you will give irrelevant responses.
-
 ## Working Directory
 
 Your working directory is ~/.klausbot/
 
-## Available Files
+## Memory via MCP Tools
 
-- conversations/${today}.md - TODAY'S conversation (READ THIS FIRST)
-- conversations/{date}.md - Past conversation logs
+Use the MCP tools to access conversation history and memories:
+
+- **search_memories** - Search past conversations and stored memories semantically
+- **get_conversation** - Retrieve full transcript of a specific conversation by session ID
+
+When user asks about past discussions, use search_memories first. If you need more detail from a specific conversation, use get_conversation with the session_id from search results.
+
+## Identity Files
+
 - identity/USER.md - Learned user preferences and context
 - identity/REMINDERS.md - Important notes and reminders
 - identity/LEARNINGS.md - Mistakes and insights from past sessions
-
-## Retrieval Workflow
-
-1. **ALWAYS first:** Read conversations/${today}.md for current session context
-2. **Historical search:** Use Grep tool to search conversations/ for past topics
-3. **User preferences:** Check identity/USER.md for learned preferences
-
-## Semantic Search
-
-For conceptual queries ("what did we discuss about X?"), use semantic search:
-1. Read ~/.klausbot/embeddings.json to check if embeddings exist
-2. The search.ts module provides semanticSearch() for similarity matching
-3. Semantic search finds related content even without exact keywords
-
-Example: Query "family discussions" finds conversations about parents, siblings, relatives - even if "family" was never mentioned.
-
-Fallback to Grep if semantic search unavailable or OPENAI_API_KEY not set.
 
 ## Learning and Memory
 
