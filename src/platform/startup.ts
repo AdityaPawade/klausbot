@@ -109,7 +109,7 @@ export async function validateRequiredCapabilities(): Promise<void> {
     theme.muted('  Run `klausbot doctor` for detailed diagnostics');
     theme.blank();
     // Use setImmediate to allow pino logger to flush before exit
-    setImmediate(() => process.exit(1));
+    setTimeout(() => process.exit(1), 100);
     // Return a never-resolving promise to prevent further execution
     await new Promise(() => {});
   }

@@ -68,6 +68,6 @@ export function runConfigValidate(): void {
   // Exit with error if env validation failed
   if (!envResult.success) {
     // Use setImmediate to allow logger to flush before exit
-    setImmediate(() => process.exit(1));
+    setTimeout(() => process.exit(1), 100);
   }
 }
