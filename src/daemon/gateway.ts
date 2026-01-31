@@ -1,4 +1,4 @@
-import { bot, createRunner, type MyContext, registerSkillCommands, getInstalledSkillNames, translateSkillCommand } from '../telegram/index.js';
+import type { MyContext } from '../telegram/index.js';
 import { MessageQueue, queryClaudeCode, ensureDataDir } from './index.js';
 import type { QueuedMessage } from './queue.js';
 import {
@@ -39,6 +39,9 @@ const log = createChildLogger('gateway');
 let queue: MessageQueue;
 let isProcessing = false;
 let shouldStop = false;
+
+/** Bot instance (loaded dynamically after config validation) */
+let bot: Awaited<typeof import('../telegram/index.js')>['bot'];
 
 /**
  * Pre-process media attachments before Claude query
@@ -167,6 +170,12 @@ export async function startGateway(): Promise<void> {
   // Validate required capabilities first (exits if missing)
   // No logging before this - validation must pass first
   await validateRequiredCapabilities();
+
+  // Dynamic import telegram module AFTER validation passes
+  // This prevents bot.ts from loading config before we verify it exists
+  const telegram = await import('../telegram/index.js');
+  bot = telegram.bot;
+  const { createRunner, registerSkillCommands, getInstalledSkillNames, translateSkillCommand } = telegram;
 
   log.info('Starting gateway...');
 
