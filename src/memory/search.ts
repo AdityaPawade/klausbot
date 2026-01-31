@@ -1,5 +1,7 @@
-import { getDb } from './db.js';
+import { desc, gte } from 'drizzle-orm';
+import { getDb, getDrizzle } from './db.js';
 import { generateEmbedding } from './embeddings.js';
+import { conversations } from './schema.js';
 
 /** Search result with relevance score */
 export interface SearchResult {
@@ -98,4 +100,76 @@ export async function semanticSearch(
     timestamp: row.timestamp,
     score: 1 / (1 + row.distance),
   }));
+}
+
+/** Conversation search result */
+export interface ConversationSearchResult {
+  sessionId: string;
+  summary: string;
+  endedAt: string;
+  messageCount: number;
+  score: number;  // Relevance score (0-1)
+}
+
+/**
+ * Search conversations by summary content
+ * Uses SQL LIKE for keyword matching (semantic search for conversations in future)
+ *
+ * @param query - Search query
+ * @param options - Search options
+ * @returns Matching conversations with relevance scores
+ */
+export function searchConversations(
+  query: string,
+  options: { topK?: number; daysBack?: number } = {}
+): ConversationSearchResult[] {
+  const { topK = 5, daysBack } = options;
+  const db = getDrizzle();
+
+  // Build base query
+  let results;
+  const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+
+  if (daysBack) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - daysBack);
+
+    results = db
+      .select()
+      .from(conversations)
+      .where(gte(conversations.endedAt, cutoff.toISOString()))
+      .orderBy(desc(conversations.endedAt))
+      .limit(50)  // Get more for filtering
+      .all();
+  } else {
+    results = db
+      .select()
+      .from(conversations)
+      .orderBy(desc(conversations.endedAt))
+      .limit(50)
+      .all();
+  }
+
+  // Score results by keyword match in summary
+  const scored = results.map(conv => {
+    const summaryLower = conv.summary.toLowerCase();
+    const matchedWords = queryWords.filter(w => summaryLower.includes(w));
+    const score = queryWords.length > 0
+      ? matchedWords.length / queryWords.length
+      : 0;
+
+    return {
+      sessionId: conv.sessionId,
+      summary: conv.summary,
+      endedAt: conv.endedAt,
+      messageCount: conv.messageCount,
+      score,
+    };
+  });
+
+  // Filter and sort by score
+  return scored
+    .filter(r => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
 }
