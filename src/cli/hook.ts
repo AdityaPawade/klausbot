@@ -4,7 +4,26 @@
  */
 
 import { stdin } from 'process';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, appendFileSync, mkdirSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
+
+/** Log file path */
+const HOOK_LOG_PATH = join(homedir(), '.klausbot', 'logs', 'hook.log');
+
+/**
+ * Append a log line to hook.log file
+ */
+function hookLog(message: string): void {
+  try {
+    // Ensure logs dir exists
+    mkdirSync(join(homedir(), '.klausbot', 'logs'), { recursive: true });
+    const timestamp = new Date().toISOString();
+    appendFileSync(HOOK_LOG_PATH, `${timestamp} ${message}\n`);
+  } catch {
+    // Silently ignore log failures - don't break the hook
+  }
+}
 
 /** Claude Code hook input structure */
 interface HookInput {
@@ -54,6 +73,7 @@ async function readStdin(timeoutMs = 5000): Promise<HookInput> {
  */
 export async function handleHookStart(): Promise<void> {
   const input = await readStdin();
+  hookLog(`[start] session=${input.session_id}`);
 
   // Dynamic import to avoid loading DB on every CLI call
   const { getRecentConversations } = await import('../memory/conversations.js');
@@ -97,7 +117,7 @@ export async function handleHookCompact(): Promise<void> {
 
   // Pre-compact: could save partial transcript here
   // For now, just acknowledge - full save happens in SessionEnd
-  console.error(`[hook:compact] session=${input.session_id}`);
+  hookLog(`[compact] session=${input.session_id}`);
 }
 
 /**
@@ -107,11 +127,11 @@ export async function handleHookCompact(): Promise<void> {
 export async function handleHookEnd(): Promise<void> {
   const input = await readStdin();
 
-  console.error(`[hook:end] session=${input.session_id} path=${input.transcript_path}`);
+  hookLog(`[end] session=${input.session_id} path=${input.transcript_path}`);
 
   // Read transcript file
   if (!existsSync(input.transcript_path)) {
-    console.error(`[hook:end] Transcript not found: ${input.transcript_path}`);
+    hookLog(`[end] ERROR: Transcript not found: ${input.transcript_path}`);
     return;
   }
 
@@ -130,7 +150,7 @@ export async function handleHookEnd(): Promise<void> {
   const messageCount = entries.filter(e => e.type === 'user' || e.type === 'assistant').length;
 
   if (messageCount === 0) {
-    console.error('[hook:end] No messages in transcript, skipping');
+    hookLog('[end] No messages in transcript, skipping');
     return;
   }
 
@@ -158,5 +178,5 @@ export async function handleHookEnd(): Promise<void> {
     // chatId: extracted from session metadata if available
   });
 
-  console.error(`[hook:end] Stored conversation: ${messageCount} messages, summary: ${summary.slice(0, 50)}...`);
+  hookLog(`[end] Stored conversation: ${messageCount} messages, summary: ${summary.slice(0, 50)}...`);
 }
