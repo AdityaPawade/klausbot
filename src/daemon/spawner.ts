@@ -173,6 +173,8 @@ export async function queryClaudeCode(
       args.push('--model', options.model);
     }
 
+    logger.debug({ hooksConfig: hooksSettings }, 'Hook configuration');
+
     // CRITICAL: stdin must inherit to avoid hang bug (issue #771)
     const claude = spawn('claude', args, {
       stdio: ['inherit', 'pipe', 'pipe'],
