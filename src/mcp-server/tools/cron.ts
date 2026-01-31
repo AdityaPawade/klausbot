@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createCronJob, listCronJobs, deleteCronJob } from '../../cron/service.js';
+import { createCronJob, listCronJobs, deleteCronJob, updateCronJob, getCronJob } from '../../cron/service.js';
 import { parseSchedule } from '../../cron/parse.js';
 import { createMcpLogger } from '../../utils/index.js';
 
@@ -134,6 +134,94 @@ export function registerCronTools(server: McpServer): void {
         content: [{
           type: 'text' as const,
           text: `Deleted scheduled task ${id}`,
+        }],
+      };
+    }
+  );
+
+  // update_cron: Modify an existing scheduled task
+  server.tool(
+    'update_cron',
+    `Modify an existing scheduled task - change its name, schedule, instruction, or enable/disable it.
+
+USE THIS WHEN:
+- User wants to change the time of a reminder ("change my morning reminder to 10am")
+- User wants to update what a scheduled task does
+- User wants to pause/resume a task (enable/disable)
+- User says "update", "change", "modify" about a scheduled task`,
+    {
+      id: z.string().describe('Job ID to update (UUID from list_crons)'),
+      name: z.string().optional().describe('New name for the job'),
+      schedule: z.string().optional().describe("New schedule: cron expression or natural language like 'every day at 10am'"),
+      instruction: z.string().optional().describe('New instruction for what Claude should do'),
+      enabled: z.boolean().optional().describe('Enable (true) or disable (false) the job'),
+    },
+    async ({ id, name, schedule, instruction, enabled }) => {
+      log.info({ id, name, schedule, enabled }, 'update_cron called');
+
+      // Check job exists
+      const existing = getCronJob(id);
+      if (!existing) {
+        log.warn({ id }, 'update_cron job not found');
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `Error: Job "${id}" not found. Use list_crons to see available jobs.`,
+          }],
+        };
+      }
+
+      // Build updates object
+      const updates: Parameters<typeof updateCronJob>[1] = {};
+      if (name !== undefined) updates.name = name;
+      if (instruction !== undefined) updates.instruction = instruction;
+      if (enabled !== undefined) updates.enabled = enabled;
+
+      // Parse new schedule if provided
+      let humanSchedule: string | undefined;
+      if (schedule !== undefined) {
+        const parsed = parseSchedule(schedule);
+        if (!parsed) {
+          log.warn({ schedule }, 'update_cron invalid schedule');
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `Error: Could not parse schedule "${schedule}". Try formats like:\n- "every 5 minutes"\n- "every day at 9am"\n- "0 9 * * *" (cron expression)`,
+            }],
+          };
+        }
+        updates.schedule = parsed.schedule;
+        updates.humanSchedule = parsed.humanReadable;
+        humanSchedule = parsed.humanReadable;
+      }
+
+      // Apply updates
+      const updated = updateCronJob(id, updates);
+      if (!updated) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `Error: Failed to update job "${id}".`,
+          }],
+        };
+      }
+
+      // Build response
+      const changes: string[] = [];
+      if (name !== undefined) changes.push(`name: "${name}"`);
+      if (humanSchedule) changes.push(`schedule: ${humanSchedule}`);
+      if (instruction !== undefined) changes.push('instruction updated');
+      if (enabled !== undefined) changes.push(enabled ? 'enabled' : 'disabled');
+
+      const nextRun = updated.nextRunAtMs
+        ? new Date(updated.nextRunAtMs).toLocaleString()
+        : 'N/A';
+
+      log.info({ id, changes }, 'update_cron completed');
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `Updated scheduled task "${updated.name}"\nChanges: ${changes.join(', ')}\nNext run: ${nextRun}`,
         }],
       };
     }

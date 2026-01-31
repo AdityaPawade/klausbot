@@ -96,6 +96,25 @@ export function runMigrations(): void {
       text TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_conv_emb_conv_id ON conversation_embeddings(conversation_id);
+
+    -- FTS5 full-text search on conversation summaries
+    CREATE VIRTUAL TABLE IF NOT EXISTS conversations_fts USING fts5(
+      summary,
+      content='conversations',
+      content_rowid='id'
+    );
+
+    -- Triggers to keep FTS index in sync
+    CREATE TRIGGER IF NOT EXISTS conversations_ai AFTER INSERT ON conversations BEGIN
+      INSERT INTO conversations_fts(rowid, summary) VALUES (new.id, new.summary);
+    END;
+    CREATE TRIGGER IF NOT EXISTS conversations_ad AFTER DELETE ON conversations BEGIN
+      INSERT INTO conversations_fts(conversations_fts, rowid, summary) VALUES('delete', old.id, old.summary);
+    END;
+    CREATE TRIGGER IF NOT EXISTS conversations_au AFTER UPDATE ON conversations BEGIN
+      INSERT INTO conversations_fts(conversations_fts, rowid, summary) VALUES('delete', old.id, old.summary);
+      INSERT INTO conversations_fts(rowid, summary) VALUES (new.id, new.summary);
+    END;
   `);
 }
 
