@@ -166,6 +166,38 @@ program
     await runMcpServer();
   });
 
+// hook command (for Claude Code hooks)
+const hook = program
+  .command('hook')
+  .description('Claude Code session hooks (internal)');
+
+hook
+  .command('start')
+  .description('SessionStart hook - outputs context to stdout')
+  .action(async () => {
+    silenceLogs();
+    const { handleHookStart } = await import('./cli/hook.js');
+    await handleHookStart();
+  });
+
+hook
+  .command('compact')
+  .description('PreCompact hook - saves state before compaction')
+  .action(async () => {
+    silenceLogs();
+    const { handleHookCompact } = await import('./cli/hook.js');
+    await handleHookCompact();
+  });
+
+hook
+  .command('end')
+  .description('SessionEnd hook - stores transcript and summary')
+  .action(async () => {
+    silenceLogs();
+    const { handleHookEnd } = await import('./cli/hook.js');
+    await handleHookEnd();
+  });
+
 // pairing command with subcommands
 const pairing = program
   .command('pairing')
