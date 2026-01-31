@@ -84,13 +84,21 @@ function info(msg: string): void {
 }
 
 /**
- * Output header with bold title and divider
+ * Output header with bold title in a full box
  */
 function header(title: string, width = 40): void {
-  const line = box.horizontal.repeat(width);
-  console.log(colors.boldMagenta(line));
-  console.log(colors.boldMagenta(title));
-  console.log(colors.boldMagenta(line));
+  // Inner width excludes the 2 vertical border chars
+  const innerWidth = width - 2;
+  // Title with 1 space padding on left, rest filled with spaces
+  const paddedTitle = ` ${title}`.padEnd(innerWidth);
+
+  const topLine = `${box.topLeft}${box.horizontal.repeat(innerWidth)}${box.topRight}`;
+  const middleLine = `${box.vertical}${paddedTitle}${box.vertical}`;
+  const bottomLine = `${box.bottomLeft}${box.horizontal.repeat(innerWidth)}${box.bottomRight}`;
+
+  console.log(colors.boldMagenta(topLine));
+  console.log(colors.boldMagenta(middleLine));
+  console.log(colors.boldMagenta(bottomLine));
 }
 
 /**
