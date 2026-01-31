@@ -164,10 +164,11 @@ function buildPromptWithMedia(
  * Initializes all components and begins processing
  */
 export async function startGateway(): Promise<void> {
-  log.info('Starting gateway...');
-
-  // Validate required capabilities (exits if missing)
+  // Validate required capabilities first (exits if missing)
+  // No logging before this - validation must pass first
   await validateRequiredCapabilities();
+
+  log.info('Starting gateway...');
 
   // Initialize ~/.klausbot/ data home (directories only)
   // NOTE: Do NOT call initializeIdentity() here - bootstrap flow creates identity files

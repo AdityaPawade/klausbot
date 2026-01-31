@@ -53,13 +53,13 @@ export const capabilities: Capability[] = [
     severity: 'required',
     check: () => {
       try {
-        execSync('claude auth status', { stdio: 'pipe', timeout: 5000 });
+        execSync('claude --version', { stdio: 'pipe', timeout: 5000 });
         return 'ok';
       } catch {
         return 'missing';
       }
     },
-    hint: 'Run: claude auth login',
+    hint: 'Install Claude Code: https://claude.ai/code',
   },
   {
     id: 'openai',
