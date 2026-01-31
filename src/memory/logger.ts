@@ -1,3 +1,8 @@
+/**
+ * @deprecated Markdown logger - replaced by SQLite conversation storage in 07.2
+ * Kept for reference only. Will be removed in future cleanup.
+ */
+
 import { appendFileSync, existsSync, mkdirSync } from 'fs';
 import { KLAUSBOT_HOME, getHomePath } from './home.js';
 import { storeEmbedding } from './embeddings.js';

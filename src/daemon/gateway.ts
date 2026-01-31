@@ -15,8 +15,6 @@ import {
   initializeEmbeddings,
   migrateEmbeddings,
   closeDb,
-  logUserMessage,
-  logAssistantMessage,
   invalidateIdentityCache,
 } from '../memory/index.js';
 import { needsBootstrap, BOOTSTRAP_INSTRUCTIONS } from '../bootstrap/index.js';
@@ -477,9 +475,6 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
   const typingInterval = setInterval(sendTyping, 4000);
 
   try {
-    // Log user message BEFORE processing (per CONTEXT.md: log original message)
-    logUserMessage(msg.text);
-
     // Process media attachments if present
     let effectiveText = msg.text;
     let mediaErrors: string[] = [];
@@ -490,13 +485,6 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
 
       if (processed.length > 0) {
         effectiveText = buildPromptWithMedia(msg.text, processed);
-
-        // Log image paths to conversation (per CONTEXT.md)
-        for (const m of processed) {
-          if (m.type === 'photo' && m.localPath) {
-            logUserMessage(`[Image: ${m.localPath}]`);
-          }
-        }
       }
     }
 
@@ -546,9 +534,6 @@ Use this chatId when creating cron jobs.
         `Error (Claude): ${response.result}`
       );
     } else {
-      // Log assistant response AFTER success
-      logAssistantMessage(response.result);
-
       // Invalidate identity cache after Claude response
       // Claude may have updated identity files during session
       invalidateIdentityCache();
