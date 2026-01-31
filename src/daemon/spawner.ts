@@ -29,6 +29,54 @@ function getMcpConfig(): object {
 }
 
 /**
+ * Get Claude Code hooks configuration
+ * Uses exact path to current process for reliable hook invocation
+ *
+ * Hook lifecycle:
+ * - SessionStart: Injects datetime + recent summaries into context
+ * - PreCompact: Saves state before context compaction (future use)
+ * - SessionEnd: Stores transcript with summary
+ *
+ * @returns Settings object with hooks configuration
+ */
+function getHooksConfig(): object {
+  // Build command using same invocation as current process
+  // Dev: node dist/index.js → node dist/index.js hook start
+  // Prod: node /usr/local/bin/klausbot → node /usr/local/bin/klausbot hook start
+  const nodeExecutable = process.argv[0];
+  const scriptPath = process.argv[1];
+  const baseCommand = `"${nodeExecutable}" "${scriptPath}"`;
+
+  return {
+    hooks: {
+      SessionStart: [{
+        // Match startup and resume events (not clear/compact which are fresh starts)
+        matcher: 'startup|resume',
+        hooks: [{
+          type: 'command',
+          command: `${baseCommand} hook start`,
+          timeout: 10,  // 10 seconds max
+        }],
+      }],
+      PreCompact: [{
+        hooks: [{
+          type: 'command',
+          command: `${baseCommand} hook compact`,
+          timeout: 30,  // 30 seconds for state save
+        }],
+      }],
+      SessionEnd: [{
+        hooks: [{
+          type: 'command',
+          command: `${baseCommand} hook end`,
+          timeout: 60,  // 60 seconds for summary generation
+        }],
+      }],
+    },
+  };
+}
+
+/**
  * Write MCP config to a temp file for Claude CLI
  * Claude CLI requires a file path for --mcp-config flag
  *
