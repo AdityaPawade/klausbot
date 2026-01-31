@@ -19,6 +19,7 @@ import {
   runMigrations,
 } from '../memory/index.js';
 import { needsBootstrap, BOOTSTRAP_INSTRUCTIONS } from '../bootstrap/index.js';
+import { validateRequiredCapabilities } from '../platform/index.js';
 import { startScheduler, stopScheduler, loadCronStore } from '../cron/index.js';
 import {
   MediaAttachment,
@@ -164,6 +165,9 @@ function buildPromptWithMedia(
  */
 export async function startGateway(): Promise<void> {
   log.info('Starting gateway...');
+
+  // Validate required capabilities (exits if missing)
+  await validateRequiredCapabilities();
 
   // Initialize ~/.klausbot/ data home (directories only)
   // NOTE: Do NOT call initializeIdentity() here - bootstrap flow creates identity files
