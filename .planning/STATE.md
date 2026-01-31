@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 
 ## Current Position
 
-Phase: 10 of 18 (Doctor Command)
+Phase: 13 of 18 (Security Hardening)
 Plan: Ready to plan
-Status: Phase 9 complete, Phase 10 not started
-Last activity: 2026-01-31 — Phase 9 verified and complete
+Status: Phases 10-12 consolidated into setup wizard, Phase 13 not started
+Last activity: 2026-01-31 — Setup wizard with service management complete
 
-Progress: [█░░░░░░░░░] 11% (3/28 plans)
+Progress: [████░░░░░░] 40% (estimated, phases 9-12 complete)
 
 ## Milestone Summary
 
@@ -65,6 +65,11 @@ Progress: [█░░░░░░░░░] 11% (3/28 plans)
 - Three capability levels: enabled (green), disabled (red required), degraded (yellow optional)
 - Config strict mode: Unknown keys in JSON config cause validation failure
 - mtime-based hot reload: getJsonConfig() cheap to call frequently
+- Unified setup wizard: Single `klausbot setup` handles tokens, dirs, and service install
+- No sudo: User-level systemd/launchd services only
+- .env in ~/.klausbot/.env: Loads from both cwd and home
+- Doctor command redundant: `klausbot status` covers prerequisite checks
+- Service commands: setup/status/restart/uninstall (no separate service subcommand)
 
 ### Pending Todos
 
@@ -77,14 +82,13 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Phase 9 complete and verified
+Stopped at: Phases 10-12 complete (setup wizard with service management)
 Resume file: None
 
 ## Next Steps
 
-1. `/gsd:discuss-phase 10` — Gather context for Doctor Command phase
-2. `/gsd:plan-phase 10` — Plan the doctor command implementation
-3. Execute Phase 10 plans
+1. `/gsd:plan-phase 13` — Plan security hardening (prompt sanitization)
+2. Or `/gsd:plan-phase 14` — Plan Telegram streaming
 
 ---
 *State updated: 2026-01-31*
