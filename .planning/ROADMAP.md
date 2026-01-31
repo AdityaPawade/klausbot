@@ -102,12 +102,12 @@ Plans:
   1. User prompts are sanitized before passing to Claude (injection prevention)
   2. Input validation rejects malformed/malicious input with clear errors
   3. Sensitive data (pairing codes, tokens) never appears in logs
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 13-01: Prompt sanitization
-- [ ] 13-02: Input validation framework
-- [ ] 13-03: Sensitive data log scrubbing
+- [ ] 13-01-PLAN.md - Security module with validation and injection detection (Wave 1)
+- [ ] 13-02-PLAN.md - Pino redaction for sensitive data (Wave 1)
+- [ ] 13-03-PLAN.md - Gateway validation integration (Wave 2)
 
 #### Phase 14: Telegram Streaming
 **Goal**: Users see real-time response generation in Telegram
@@ -199,7 +199,7 @@ Phases execute in numeric order: 9 → 10 → 11 → 12 → 13 → 14 → 15 →
 | 10. Doctor Command | v1.1 | 0/2 | Not started | - |
 | 11. Setup & Onboarding | v1.1 | 0/3 | Not started | - |
 | 12. Service Management | v1.1 | 0/3 | Not started | - |
-| 13. Security Hardening | v1.1 | 0/3 | Not started | - |
+| 13. Security Hardening | v1.1 | 0/3 | Planned | - |
 | 14. Telegram Streaming | v1.1 | 0/2 | Not started | - |
 | 15. Telegram Threading | v1.1 | 0/1 | Not started | - |
 | 16. Heartbeat System | v1.1 | 0/3 | Not started | - |
