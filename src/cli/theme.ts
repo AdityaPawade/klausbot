@@ -260,17 +260,16 @@ function boxed(content: string | string[], opts: BoxOptions = {}): void {
 
 /**
  * Output klausbot ASCII art branding
- * Clean, modern design inspired by professional CLIs
+ * Clean block letter style - just the name
  */
 function asciiArt(): void {
-  // Simple geometric logo with clean typography
   const lines = [
     '',
-    '   ▄█▀▀█▄',
-    '   █    █   klausbot',
-    '   █ ◈  █   ─────────────────────',
-    '   █    █   Telegram × Claude Code',
-    '   ▀█▄▄█▀',
+    '  _    _                 _           _   ',
+    ' | | _| | __ _ _   _ ___| |__   ___ | |_ ',
+    ' | |/ / |/ _` | | | / __| \'_ \\ / _ \\| __|',
+    ' |   <| | (_| | |_| \\__ \\ |_) | (_) | |_ ',
+    ' |_|\\_\\_|\\__,_|\\__,_|___/_.__/ \\___/ \\__|',
     '',
   ];
 
