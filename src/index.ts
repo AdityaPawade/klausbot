@@ -372,7 +372,7 @@ if (process.argv.length <= 2) {
 } else {
   program.parseAsync(process.argv).catch((err) => {
     theme.error(`Fatal error: ${err.message}`);
-    // Use setImmediate to allow pino logger to flush before exit
-    setImmediate(() => process.exit(1));
+    // Use setTimeout to allow pino logger to flush before exit
+    setTimeout(() => process.exit(1), 100);
   });
 }
