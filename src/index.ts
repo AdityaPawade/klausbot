@@ -351,6 +351,20 @@ pairing
     }
   });
 
+// config command with subcommands
+const configCmd = program
+  .command('config')
+  .description('Configuration management');
+
+configCmd
+  .command('validate')
+  .description('Validate environment and config file')
+  .action(async () => {
+    silenceLogs();
+    const { runConfigValidate } = await import('./cli/config.js');
+    runConfigValidate();
+  });
+
 // Parse and execute
 // If no command provided, show help
 if (process.argv.length <= 2) {
