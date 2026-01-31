@@ -38,12 +38,12 @@ Summary:
   3. User sees clear message when a feature is disabled due to missing env vars
   4. App reads all config from environment variables (12-factor compliant)
   5. execPath correctly identifies the running binary location across platforms
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 09-01: Platform detection module
-- [ ] 09-02: Environment capability detection
-- [ ] 09-03: Graceful degradation framework
+- [ ] 09-01-PLAN.md - Platform detection module (Wave 1)
+- [ ] 09-02-PLAN.md - Environment capability detection (Wave 2)
+- [ ] 09-03-PLAN.md - Graceful degradation framework (Wave 2)
 
 #### Phase 10: Doctor Command
 **Goal**: Users can diagnose setup issues before running the bot
@@ -195,7 +195,7 @@ Phases execute in numeric order: 9 → 10 → 11 → 12 → 13 → 14 → 15 →
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 9. Platform Foundation | v1.1 | 0/3 | Not started | - |
+| 9. Platform Foundation | v1.1 | 0/3 | Planned | - |
 | 10. Doctor Command | v1.1 | 0/2 | Not started | - |
 | 11. Setup & Onboarding | v1.1 | 0/3 | Not started | - |
 | 12. Service Management | v1.1 | 0/3 | Not started | - |
