@@ -1,32 +1,35 @@
 import Database from 'better-sqlite3';
+import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as sqliteVec from 'sqlite-vec';
 import { getHomePath } from './home.js';
+import * as schema from './schema.js';
 
-/** Lazy-initialized database instance */
-let db: Database.Database | null = null;
+/** Lazy-initialized database instances */
+let sqliteDb: Database.Database | null = null;
+let drizzleDb: BetterSQLite3Database<typeof schema> | null = null;
 
 /**
  * Get or create SQLite database with vector extension
  * Lazy initialization - creates DB on first call
  *
- * @returns Database instance with sqlite-vec loaded
+ * @returns Raw better-sqlite3 database instance
  */
 export function getDb(): Database.Database {
-  if (db !== null) {
-    return db;
+  if (sqliteDb !== null) {
+    return sqliteDb;
   }
 
   const dbPath = getHomePath('klausbot.db');
-  db = new Database(dbPath);
+  sqliteDb = new Database(dbPath);
 
   // Enable WAL mode for concurrent reads
-  db.pragma('journal_mode = WAL');
+  sqliteDb.pragma('journal_mode = WAL');
 
-  // Load sqlite-vec extension (uses load() instead of loadExtension for proper binding support)
-  sqliteVec.load(db);
+  // Load sqlite-vec extension
+  sqliteVec.load(sqliteDb);
 
-  // Create schema
-  db.exec(`
+  // Create legacy schema (vec table needs raw SQL)
+  sqliteDb.exec(`
     CREATE TABLE IF NOT EXISTS embeddings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       text_id TEXT UNIQUE NOT NULL,
@@ -42,7 +45,58 @@ export function getDb(): Database.Database {
     );
   `);
 
-  return db;
+  return sqliteDb;
+}
+
+/**
+ * Get Drizzle ORM instance
+ * Creates raw DB first if needed
+ *
+ * @returns Drizzle database instance with schema
+ */
+export function getDrizzle(): BetterSQLite3Database<typeof schema> {
+  if (drizzleDb !== null) {
+    return drizzleDb;
+  }
+
+  // Ensure raw DB is initialized first (creates tables)
+  const db = getDb();
+  drizzleDb = drizzle(db, { schema });
+
+  return drizzleDb;
+}
+
+/**
+ * Run schema migrations
+ * Creates conversations table if not exists
+ * Safe to call multiple times (idempotent)
+ */
+export function runMigrations(): void {
+  const db = getDb();
+
+  // Create conversations table (Drizzle schema equivalent)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT UNIQUE NOT NULL,
+      started_at TEXT NOT NULL,
+      ended_at TEXT NOT NULL,
+      transcript TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      message_count INTEGER NOT NULL,
+      chat_id INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_conversations_ended_at ON conversations(ended_at);
+    CREATE INDEX IF NOT EXISTS idx_conversations_chat_id ON conversations(chat_id);
+
+    CREATE TABLE IF NOT EXISTS conversation_embeddings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL,
+      chunk_index INTEGER NOT NULL,
+      text TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_conv_emb_conv_id ON conversation_embeddings(conversation_id);
+  `);
 }
 
 /**
@@ -50,8 +104,9 @@ export function getDb(): Database.Database {
  * Call on shutdown for clean exit
  */
 export function closeDb(): void {
-  if (db !== null) {
-    db.close();
-    db = null;
+  if (sqliteDb !== null) {
+    sqliteDb.close();
+    sqliteDb = null;
+    drizzleDb = null;
   }
 }
