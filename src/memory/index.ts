@@ -34,7 +34,18 @@ export {
 } from './context.js';
 
 // Database management
-export { getDb, closeDb } from './db.js';
+export { getDb, closeDb, runMigrations, getDrizzle } from './db.js';
+
+// Conversation storage
+export {
+  storeConversation,
+  getRecentConversations,
+  getConversationBySessionId,
+  parseTranscript,
+  extractConversationText,
+  generateSummary,
+  type ConversationRecord,
+} from './conversations.js';
 
 // Embedding generation and storage
 export {
