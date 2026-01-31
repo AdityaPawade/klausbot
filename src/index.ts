@@ -9,10 +9,10 @@
 
 import { Command } from 'commander';
 import dotenv from 'dotenv';
-import pc from 'picocolors';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { theme } from './cli/theme.js';
 
 // Load .env file FIRST before any config access
 dotenv.config();
@@ -61,6 +61,10 @@ program
   .name('klausbot')
   .description('Telegram gateway for Claude Code')
   .version(getVersion(), '-v, --version', 'Show version')
+  .addHelpText('beforeAll', () => {
+    theme.asciiArt();
+    return '';
+  })
   .addHelpText('after', `
 Skills: npx skills or manually add to ~/.claude/skills/
 
@@ -97,9 +101,11 @@ program
     // Prompt for confirmation (unless --force)
     if (!options.force) {
       if (alreadyExists) {
-        console.log(`\n⚠️  ${KLAUSBOT_HOME} already exists.`);
-        console.log('This will reset identity and conversations.');
-        console.log('Config will be preserved.\n');
+        theme.blank();
+        theme.warn(`${KLAUSBOT_HOME} already exists.`);
+        theme.info('This will reset identity and conversations.');
+        theme.info('Config will be preserved.');
+        theme.blank();
       }
 
       const confirmed = await confirm({
@@ -108,13 +114,14 @@ program
       });
 
       if (!confirmed) {
-        console.log('Aborted.');
+        theme.info('Aborted.');
         process.exit(0);
       }
     }
 
     const log = createChildLogger('init');
-    console.log(`\nInitializing klausbot data home at ${KLAUSBOT_HOME}...`);
+    theme.blank();
+    theme.info(`Initializing klausbot data home at ${KLAUSBOT_HOME}...`);
 
     // Clear database if it exists (conversations, embeddings)
     const dbPath = join(KLAUSBOT_HOME, 'klausbot.db');
@@ -130,10 +137,12 @@ program
     initializeHome(log);
     initializeIdentity(log);
 
-    console.log(pc.green('Done!'));
-    console.log(`  ~/.klausbot/config/ ${pc.dim('(preserved)')}`);
-    console.log(`  ~/.klausbot/klausbot.db ${pc.dim('(cleared)')}`);
-    console.log(`  ~/.klausbot/identity/ ${pc.dim('(reset)')}`);
+    theme.success('Done!');
+    theme.list([
+      '~/.klausbot/config/ (preserved)',
+      '~/.klausbot/klausbot.db (cleared)',
+      '~/.klausbot/identity/ (reset)',
+    ], { indent: 2 });
   });
 
 // install command
@@ -215,9 +224,9 @@ pairing
 
     const result = store.approvePairing(code.toUpperCase());
     if (result) {
-      console.log(`Approved: chatId=${result.chatId}, username=${result.username ?? 'N/A'}`);
+      theme.success(`Approved: chatId=${result.chatId}, username=${result.username ?? 'N/A'}`);
     } else {
-      console.error(`Error: Code "${code}" not found`);
+      theme.error(`Code "${code}" not found`);
       process.exit(1);
     }
   });
@@ -233,9 +242,9 @@ pairing
 
     const rejected = store.rejectPairing(code.toUpperCase());
     if (rejected) {
-      console.log(`Rejected: code=${code}`);
+      theme.success(`Rejected: code=${code}`);
     } else {
-      console.error(`Error: Code "${code}" not found`);
+      theme.error(`Code "${code}" not found`);
       process.exit(1);
     }
   });
@@ -252,21 +261,29 @@ pairing
     const pending = store.listPending();
     const approved = store.listApproved();
 
-    console.log(pc.cyan('=== Pending Requests ==='));
+    theme.header('Pending Requests');
     if (pending.length === 0) {
-      console.log('  (none)');
+      theme.muted('  (none)');
     } else {
       for (const req of pending) {
-        console.log(`  Code: ${pc.yellow(req.code)}  Chat: ${req.chatId}  User: ${req.username ?? 'N/A'}  Age: ${formatAge(req.requestedAt)}`);
+        theme.keyValue('Code', req.code, { keyWidth: 6 });
+        theme.keyValue('Chat', String(req.chatId), { keyWidth: 6 });
+        theme.keyValue('User', req.username ?? 'N/A', { keyWidth: 6 });
+        theme.keyValue('Age', formatAge(req.requestedAt), { keyWidth: 6 });
+        theme.blank();
       }
     }
 
-    console.log(pc.cyan('\n=== Approved Users ==='));
+    theme.blank();
+    theme.header('Approved Users');
     if (approved.length === 0) {
-      console.log('  (none)');
+      theme.muted('  (none)');
     } else {
       for (const user of approved) {
-        console.log(`  Chat: ${user.chatId}  User: ${user.username ?? 'N/A'}  Since: ${formatAge(user.approvedAt)}`);
+        theme.keyValue('Chat', String(user.chatId), { keyWidth: 6 });
+        theme.keyValue('User', user.username ?? 'N/A', { keyWidth: 6 });
+        theme.keyValue('Since', formatAge(user.approvedAt), { keyWidth: 6 });
+        theme.blank();
       }
     }
   });
@@ -283,7 +300,7 @@ pairing
 
     const chatId = parseInt(chatIdStr, 10);
     if (isNaN(chatId)) {
-      console.error(`Error: Invalid chat ID "${chatIdStr}"`);
+      theme.error(`Invalid chat ID "${chatIdStr}"`);
       process.exit(1);
     }
 
@@ -295,16 +312,16 @@ pairing
         default: false,
       });
       if (!confirmed) {
-        console.log('Aborted.');
+        theme.info('Aborted.');
         process.exit(0);
       }
     }
 
     const revoked = store.revoke(chatId);
     if (revoked) {
-      console.log(`Revoked: chatId=${chatId}`);
+      theme.success(`Revoked: chatId=${chatId}`);
     } else {
-      console.error(`Error: Chat ID ${chatId} not found in approved users`);
+      theme.error(`Chat ID ${chatId} not found in approved users`);
       process.exit(1);
     }
   });
@@ -315,7 +332,7 @@ if (process.argv.length <= 2) {
   program.help();
 } else {
   program.parseAsync(process.argv).catch((err) => {
-    console.error('Fatal error:', err.message);
+    theme.error(`Fatal error: ${err.message}`);
     process.exit(1);
   });
 }
