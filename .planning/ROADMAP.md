@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Identity** - Bootstrap flow and persistent personality system
 - [x] **Phase 4: Skills** - Extensible capabilities system with skill isolation
 - [x] **Phase 4.1: Skills Polish** - Skill registry and system prompt enhancements (INSERTED)
-- [ ] **Phase 5: Proactive** - Cron scheduling and self-evolution system
+- [x] **Phase 5: Proactive** - Cron scheduling and self-evolution system
 - [x] **Phase 5.1: MCP Cron Tools** - Typed MCP tools for cron management via CLI spawner (INSERTED)
 - [x] **Phase 6: Multimodal** - Voice transcription and image analysis
 - [x] **Phase 7: Resilience & Tooling** - Timeout recovery, skills cleanup, agent authoring
@@ -147,11 +147,11 @@ Plans:
 
 Plans:
 
-- [ ] 05-01-PLAN.md — Cron foundation: types, store, schedule parsing
-- [ ] 05-02-PLAN.md — Cron execution: executor, service, scheduler loop
-- [ ] 05-03-PLAN.md — Cron integration: gateway lifecycle, /crons command
-- [ ] 05-04-PLAN.md — Learning system: LEARNINGS.md, system prompt instructions
-- [ ] 05-05-PLAN.md — End-to-end verification (human checkpoint)
+- [x] 05-01-PLAN.md — Cron foundation: types, store, schedule parsing
+- [x] 05-02-PLAN.md — Cron execution: executor, service, scheduler loop
+- [x] 05-03-PLAN.md — Cron integration: gateway lifecycle, /crons command
+- [x] 05-04-PLAN.md — Learning system: LEARNINGS.md, system prompt instructions
+- [x] 05-05-PLAN.md — End-to-end verification (human checkpoint)
 
 ### Phase 5.1: MCP Cron Tools (INSERTED)
 
@@ -258,11 +258,11 @@ Plans:
 Note: Inspired by OpenClaw's memory architecture. Sessions remain discrete but context-aware via hook injection. Deep history available via MCP search tools. SQLite is single source of truth for conversations (no redundant markdown files).
 
 Plans:
-- [ ] 07.2-01-PLAN.md — Hook CLI commands: `klausbot hook start|compact|end`, remove markdown logger
-- [ ] 07.2-02-PLAN.md — Conversation storage: Drizzle schema + migrations, parse transcript, summarize
-- [ ] 07.2-03-PLAN.md — Spawner integration: --settings JSON with hooks, path detection
-- [ ] 07.2-04-PLAN.md — MCP tool updates: search conversations, get_conversation tool
-- [ ] 07.2-05-PLAN.md — End-to-end verification (human checkpoint)
+- [x] 07.2-01-PLAN.md — Hook CLI commands: `klausbot hook start|compact|end`, remove markdown logger
+- [x] 07.2-02-PLAN.md — Conversation storage: Drizzle schema + migrations, parse transcript, summarize
+- [x] 07.2-03-PLAN.md — Spawner integration: --settings JSON with hooks, path detection
+- [x] 07.2-04-PLAN.md — MCP tool updates: search conversations, get_conversation tool
+- [x] 07.2-05-PLAN.md — End-to-end verification (human checkpoint)
 
 ### Phase 8: CLI Theme System
 
@@ -294,12 +294,12 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Identity      | 3/3            | Complete    | 2026-01-29 |
 | 4. Skills        | 3/3            | Complete    | 2026-01-29 |
 | 4.1 Skills Polish| 2/2            | Complete    | 2026-01-30 |
-| 5. Proactive     | 4/5            | In progress | -          |
+| 5. Proactive     | 5/5            | Complete    | 2026-01-31 |
 | 5.1 MCP Cron     | 2/2            | Complete    | 2026-01-30 |
 | 6. Multimodal    | 5/5            | Complete    | 2026-01-30 |
 | 7. Resilience    | 4/4            | Complete    | 2026-01-30 |
 | 7.1 Memory Search| 3/3            | Complete    | 2026-01-30 |
-| 7.2 Continuity   | 0/5            | Not started | -          |
+| 7.2 Continuity   | 5/5            | Complete    | 2026-01-31 |
 | 8. CLI Theme     | 0/?            | Not started | -          |
 
 ---

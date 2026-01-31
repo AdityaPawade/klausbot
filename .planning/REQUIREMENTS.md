@@ -43,11 +43,11 @@
 
 ### Cron System
 
-- [ ] **CRON-01**: Cron tasks stored persistently (survive restarts)
-- [ ] **CRON-02**: Cron tasks execute at scheduled times by spawning Claude Code
-- [ ] **CRON-03**: User can create crons through natural conversation
-- [ ] **CRON-04**: User can list, modify, delete existing crons
-- [ ] **CRON-05**: Cron execution results sent to user via Telegram
+- [x] **CRON-01**: Cron tasks stored persistently (survive restarts)
+- [x] **CRON-02**: Cron tasks execute at scheduled times by spawning Claude Code
+- [x] **CRON-03**: User can create crons through natural conversation
+- [x] **CRON-04**: User can list, modify, delete existing crons
+- [x] **CRON-05**: Cron execution results sent to user via Telegram
 
 ### Skills System
 
@@ -59,11 +59,11 @@
 
 ### Self-Evolution
 
-- [ ] **EVOL-01**: LEARNINGS.md tracks mistakes and insights
-- [ ] **EVOL-02**: Claude consults learnings to avoid repeating mistakes
-- [ ] **EVOL-03**: Claude can modify own behavior based on feedback
-- [ ] **EVOL-04**: All self-modifications version controlled (git)
-- [ ] **EVOL-05**: Claude proactively suggests improvements
+- [x] **EVOL-01**: LEARNINGS.md tracks mistakes and insights
+- [x] **EVOL-02**: Claude consults learnings to avoid repeating mistakes
+- [x] **EVOL-03**: Claude can modify own behavior based on feedback
+- [x] **EVOL-04**: All self-modifications version controlled (git)
+- [x] **EVOL-05**: Claude proactively suggests improvements
 
 ## v2 Requirements
 
@@ -123,21 +123,21 @@
 | IDEN-04     | Phase 3 | Complete |
 | IDEN-05     | Phase 3 | Complete |
 | IDEN-06     | Phase 3 | Complete |
-| CRON-01     | Phase 5 | Pending |
-| CRON-02     | Phase 5 | Pending |
-| CRON-03     | Phase 5 | Pending |
-| CRON-04     | Phase 5 | Pending |
-| CRON-05     | Phase 5 | Pending |
+| CRON-01     | Phase 5 | Complete |
+| CRON-02     | Phase 5 | Complete |
+| CRON-03     | Phase 5 | Complete |
+| CRON-04     | Phase 5 | Complete |
+| CRON-05     | Phase 5 | Complete |
 | SKILL-01    | Phase 4 | Pending |
 | SKILL-02    | Phase 4 | Pending |
 | SKILL-03    | Phase 4 | Pending |
 | SKILL-04    | Phase 4 | Pending |
 | SKILL-05    | Phase 4 | Pending |
-| EVOL-01     | Phase 5 | Pending |
-| EVOL-02     | Phase 5 | Pending |
-| EVOL-03     | Phase 5 | Pending |
-| EVOL-04     | Phase 1 | Pending |
-| EVOL-05     | Phase 5 | Pending |
+| EVOL-01     | Phase 5 | Complete |
+| EVOL-02     | Phase 5 | Complete |
+| EVOL-03     | Phase 5 | Complete |
+| EVOL-04     | Phase 1 | Complete |
+| EVOL-05     | Phase 5 | Complete |
 
 **Coverage:**
 
