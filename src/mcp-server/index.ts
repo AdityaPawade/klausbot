@@ -7,6 +7,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { registerCronTools } from './tools/cron.js';
 import { registerMemoryTools } from './tools/memory.js';
+import { registerConversationTools } from './tools/conversations.js';
 import { createMcpLogger } from '../utils/index.js';
 
 const log = createMcpLogger('mcp-server');
@@ -25,6 +26,7 @@ export async function runMcpServer(): Promise<void> {
   // Register all tools
   registerCronTools(server);
   registerMemoryTools(server);
+  registerConversationTools(server);
 
   // Connect to stdio transport (spawned by Claude CLI)
   log.info('MCP server starting');
