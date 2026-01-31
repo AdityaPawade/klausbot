@@ -21,7 +21,6 @@ import {
 export function displayStartupChecklist(results: CheckResult[]): void {
   const platform = detectPlatform();
 
-  theme.blank();
   theme.header('Capability Check');
   theme.blank();
 
