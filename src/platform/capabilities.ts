@@ -53,6 +53,9 @@ export const capabilities: Capability[] = [
     severity: 'required',
     check: () => {
       try {
+        // First check if claude is in PATH
+        execSync('which claude', { stdio: 'pipe', timeout: 2000 });
+        // Then verify it responds
         execSync('claude --version', { stdio: 'pipe', timeout: 5000 });
         return 'ok';
       } catch {
