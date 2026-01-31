@@ -16,6 +16,7 @@ import {
   migrateEmbeddings,
   closeDb,
   invalidateIdentityCache,
+  runMigrations,
 } from '../memory/index.js';
 import { needsBootstrap, BOOTSTRAP_INSTRUCTIONS } from '../bootstrap/index.js';
 import { startScheduler, stopScheduler, loadCronStore } from '../cron/index.js';
@@ -168,6 +169,10 @@ export async function startGateway(): Promise<void> {
   // NOTE: Do NOT call initializeIdentity() here - bootstrap flow creates identity files
   initializeHome(log);
   initializeEmbeddings();
+
+  // Run database migrations (creates tables if needed)
+  runMigrations();
+  log.info('Database migrations complete');
 
   // Migrate embeddings from JSON to SQLite (idempotent)
   await migrateEmbeddings();
