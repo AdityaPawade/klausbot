@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-28)
 
 **Core value:** 24/7 personal assistant that never forgets, never loses context, and self-improves through use.
-**Current focus:** Phase 7.1 complete - Memory Search MCP (+ gap closure)
+**Current focus:** Phase 7.2 - Conversation Continuity (Claude Code hooks)
 
 ## Current Position
 
-Phase: 7.1 of 7.1 (Memory Search MCP)
-Plan: 3 of 3 in Phase 7.1 (gap closure)
-Status: Phase verified ✓
-Last activity: 2026-01-30 - Completed 07.1-03-PLAN.md (MCP Logging Gap Closure)
+Phase: 7.2 of 7.2 (Conversation Continuity)
+Plan: 1 of 3 in Phase 7.2
+Status: In progress
+Last activity: 2026-01-31 - Completed 07.2-01-PLAN.md (Hook CLI Commands)
 
-Progress: [██████████] 100% (38/38 plans complete)
+Progress: [██████████] 100% (39/41 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 38
-- Average duration: ~4.5 min (excluding human verification time)
-- Total execution time: ~177 min
+- Total plans completed: 39
+- Average duration: ~4.6 min (excluding human verification time)
+- Total execution time: ~179 min
 
 **By Phase:**
 
@@ -37,10 +37,11 @@ Progress: [██████████] 100% (38/38 plans complete)
 | 06-multimodal | 5/5 | ~11 min | 2.2 min |
 | 07-resilience-tooling | 4/4 | ~52 min | 13 min |
 | 07.1-memory-search-mcp | 3/3 | 16 min | 5.3 min |
+| 07.2-conversation-continuity | 1/3 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 07-04 (~45 min), 07.1-01 (12 min), 07.1-02 (2 min), 07.1-03 (2 min)
-- Trend: Phase 7.1 complete with gap closure - MCP tools now have observability
+- Last 5 plans: 07.1-01 (12 min), 07.1-02 (2 min), 07.1-03 (2 min), 07.2-01 (2 min)
+- Trend: Phase 7.2 started - Hook CLI commands complete
 
 *Updated after each plan completion*
 
@@ -106,12 +107,24 @@ Recent decisions affecting current work:
 - 07.1-03: MCP log namespace pattern: mcp-server, mcp:memory, mcp:cron
 - 07.1-03: Structured logging with params object first, message second
 - 07.1-03: Warning level for validation failures (invalid schedule, not found)
+- 07.2: SQLite as single source of truth for conversations (remove markdown logs)
+- 07.2: SessionEnd hook parses Claude transcript, stores in SQLite with summary + embedding
+- 07.2: Hook commands via exact klausbot CLI path (not global install)
+- 07.2: Hooks passed via --settings inline JSON (not file)
+- 07.2: Drizzle ORM for SQLite schema management and migrations
+- 07.2: Gateway startup runs migrations before starting services
+- 07.2: Migrate existing embeddings table to Drizzle schema
+- 07.2: SessionStart injects current datetime for temporal context
+- 07.2-01: 5s timeout on stdin read to prevent hanging
+- 07.2-01: stdout for SessionStart context injection, stderr for logging
+- 07.2-01: Markdown logger deprecated (kept for reference)
 
 ### Roadmap Evolution
 
 - Phase 7 added: Resilience & Tooling (timeout recovery, skills cleanup, agent authoring)
 - Phase 5.1: Originally "ACP Streaming" with Agent SDK. Pivoted to "MCP Cron Tools" with CLI spawner after SDK issues.
 - Phase 7.1 inserted: Memory Search MCP (URGENT) - embeddings exist but Claude can't search them, need SQLite + MCP tool
+- Phase 7.2 inserted: Conversation Continuity - Claude Code hooks for context injection, conversation ownership, inspired by OpenClaw architecture
 - Phase 8 added: CLI Theme System - consistent output formatting with helper methods and unified color scheme
 
 ### Pending Todos
@@ -124,9 +137,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-30
-Stopped at: Phase 7.1 complete (including gap closure), ready for Phase 8
+Last session: 2026-01-31T05:01:43Z
+Stopped at: Completed 07.2-01-PLAN.md (Hook CLI Commands)
 Resume file: None
 
 ---
-*State updated: 2026-01-30*
+*State updated: 2026-01-31*
