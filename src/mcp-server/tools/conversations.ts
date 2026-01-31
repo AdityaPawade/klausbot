@@ -17,7 +17,14 @@ export function registerConversationTools(server: McpServer): void {
   // get_conversation: Retrieve full transcript by session ID
   server.tool(
     'get_conversation',
-    'Retrieve the full transcript of a past conversation by session ID. Use search_memories first to find relevant session IDs.',
+    `Retrieve the COMPLETE transcript of a past conversation - every message, full detail.
+
+USE THIS WHEN:
+- search_memories found a relevant conversation but you need the full context
+- User wants exact details of what was said (not just a summary)
+- You need to quote or reference specific parts of a past discussion
+
+First use search_memories to find relevant session IDs, then use this to get full transcript.`,
     {
       session_id: z.string().describe('Session ID from search_memories results'),
     },

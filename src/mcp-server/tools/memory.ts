@@ -17,7 +17,15 @@ export function registerMemoryTools(server: McpServer): void {
   // search_memories: Search past conversations semantically
   server.tool(
     'search_memories',
-    'Search past conversations and memories semantically. Returns relevant results from both memory embeddings and conversation history.',
+    `Search ALL past conversations and memories - no time limit, full history available.
+
+USE THIS WHEN:
+- User says "we talked about", "remember when", "what did I say about", "last time"
+- User asks about something you should know but don't see in current context
+- You want to check if something was discussed before (don't guess - search)
+- Injected context summaries seem incomplete - there's always more history
+
+Returns matching memories and conversation summaries with session IDs for drill-down.`,
     {
       query: z.string().describe('Natural language search query (e.g., "discussions about project deadlines")'),
       limit: z.number().optional().default(5).describe('Max results to return (default: 5)'),
