@@ -6,6 +6,24 @@
  */
 
 import { execSync } from 'child_process';
+import { existsSync } from 'fs';
+import { join } from 'path';
+
+/**
+ * Check if a command exists in PATH using Node APIs
+ */
+function commandExists(cmd: string): boolean {
+  const pathEnv = process.env.PATH || '';
+  const pathDirs = pathEnv.split(process.platform === 'win32' ? ';' : ':');
+
+  for (const dir of pathDirs) {
+    const fullPath = join(dir, cmd);
+    if (existsSync(fullPath)) return true;
+    // Check with .exe on Windows
+    if (process.platform === 'win32' && existsSync(fullPath + '.exe')) return true;
+  }
+  return false;
+}
 
 /** Capability severity level */
 export type Severity = 'required' | 'optional';
@@ -52,10 +70,10 @@ export const capabilities: Capability[] = [
     name: 'Claude Code',
     severity: 'required',
     check: () => {
+      // Check if claude is in PATH using Node APIs
+      if (!commandExists('claude')) return 'missing';
       try {
-        // First check if claude is in PATH
-        execSync('which claude', { stdio: 'pipe', timeout: 2000 });
-        // Then verify it responds
+        // Verify it responds
         execSync('claude --version', { stdio: 'pipe', timeout: 5000 });
         return 'ok';
       } catch {
