@@ -154,22 +154,20 @@ Plans:
 - [ ] 16-03: User note saving
 
 #### Phase 17: Docker & Release
-**Goal**: klausbot is documented and containerized for easy deployment
+**Goal**: klausbot is documented for easy deployment (Docker marked "Coming Soon")
 **Depends on**: Phase 16 (all features implemented)
 **Requirements**: PLAT-04, RLSE-01, RLSE-02, RLSE-03, RLSE-04, RLSE-05
 **Success Criteria** (what must be TRUE):
-  1. Docker container runs klausbot with identical behavior to native
-  2. README includes step-by-step installation guide
-  3. README includes "Why I built it" section
-  4. All commands are documented
-  5. Configuration reference and troubleshooting guide exist
-**Plans**: TBD
+  1. README includes step-by-step installation guide
+  2. README includes "Why I built it" section
+  3. All commands are documented
+  4. Configuration reference and troubleshooting guide exist
+  5. Docker section says "Coming Soon" (deferred per user decision)
+**Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: Docker containerization
-- [ ] 17-02: README and installation guide
-- [ ] 17-03: Command and config documentation
-- [ ] 17-04: Troubleshooting guide
+- [ ] 17-01-PLAN.md — Documentation files (LICENSE, .env.example, README.md)
+- [ ] 17-02-PLAN.md — User review checkpoint (fill story, add screenshots)
 
 #### Phase 18: Testing Framework
 **Goal**: Comprehensive tests ensure "tests pass = app works" confidence
@@ -203,9 +201,9 @@ Phases execute in numeric order: 9 → 10 → 11 → 12 → 13 → 14 → 15 →
 | 14. Telegram Streaming | v1.1 | 0/2 | Not started | - |
 | 15. Telegram Threading | v1.1 | 0/1 | Not started | - |
 | 16. Heartbeat System | v1.1 | 0/3 | Not started | - |
-| 17. Docker & Release | v1.1 | 0/4 | Not started | - |
+| 17. Docker & Release | v1.1 | 0/2 | Planned | - |
 | 18. Testing Framework | v1.1 | 0/4 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-31*
-*v1.1 milestone: 10 phases, 28 plans, 49 requirements*
+*v1.1 milestone: 10 phases, 26 plans, 49 requirements*
