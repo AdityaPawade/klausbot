@@ -113,15 +113,17 @@ Optional configuration in `~/.klausbot/config/klausbot.json`:
 
 ```json
 {
+  "model": "opus",
   "logVerbosity": "normal"
 }
 ```
 
 | Key | Default | Description |
 |-----|---------|-------------|
+| `model` | (inherited) | AI model: `opus` or `sonnet` |
 | `logVerbosity` | `normal` | Logging detail (minimal/normal/verbose) |
 
-The AI model is inherited from your Claude Code configuration.
+If `model` is not set, klausbot uses your Claude Code default.
 
 ## Troubleshooting
 
