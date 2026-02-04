@@ -6,9 +6,7 @@
 
 ## Why I Built It
 
-I wanted to use [OpenClaw](https://github.com/openclaw/openclaw) — a Telegram bot that lets you chat with Claude — but couldn't due to Anthropic Terms of Service restrictions. So I built Klausbot as an alternative approach.
-
-Klausbot is a thin wrapper around [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that connects it to Telegram. This lets you use your existing Claude Code subscription rather than paying for API credits separately.
+Klausbot is an [OpenClaw](https://github.com/openclaw/openclaw) clone built as a thin wrapper around [Claude Code](https://docs.anthropic.com/en/docs/claude-code). This lets you use your existing Claude Code subscription rather than paying for API credits separately.
 
 ## What It Does
 
