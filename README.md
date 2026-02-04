@@ -111,11 +111,9 @@ cp .env.example .env
 
 Optional configuration in `~/.klausbot/config/klausbot.json`:
 
-```json
-{
-  "model": "opus",
-  "logVerbosity": "normal"
-}
+```bash
+mkdir -p ~/.klausbot/config
+cp klausbot.json.example ~/.klausbot/config/klausbot.json
 ```
 
 | Key | Default | Description |
