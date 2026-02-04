@@ -155,9 +155,8 @@ If `model` is not set, Klausbot uses your Claude Code default.
 
 ### Bot not responding?
 
-1. Check the terminal running `npm run dev` for errors
+1. Check the terminal running `npm run dev -- daemon` for errors
 2. Verify bot token format: `123456789:ABC-DEF...`
-3. Run `npm run dev -- status` to check config
 
 ### Memory search not working?
 
