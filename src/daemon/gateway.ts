@@ -1,5 +1,6 @@
 import type { MyContext } from '../telegram/index.js';
 import { MessageQueue, queryClaudeCode, ensureDataDir } from './index.js';
+import { getJsonConfig } from '../config/index.js';
 import type { QueuedMessage } from './queue.js';
 import {
   initPairingStore,
@@ -536,8 +537,10 @@ Use this chatId when creating cron jobs.
       : chatIdContext;
 
     // Call Claude (with media-enriched prompt if applicable)
+    const jsonConfig = getJsonConfig();
     const response = await queryClaudeCode(effectiveText, {
       additionalInstructions,
+      model: jsonConfig.model,
     });
 
     // Stop typing indicator

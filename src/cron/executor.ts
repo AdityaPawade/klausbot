@@ -7,6 +7,7 @@ import { queryClaudeCode } from '../daemon/spawner.js';
 import { bot } from '../telegram/bot.js';
 import type { CronJob } from './types.js';
 import { createChildLogger } from '../utils/index.js';
+import { getJsonConfig } from '../config/index.js';
 
 const log = createChildLogger('cron-executor');
 
@@ -37,9 +38,12 @@ export async function executeCronJob(job: CronJob): Promise<ExecutionResult> {
 
   log.info({ jobId: job.id, jobName: job.name, chatId: job.chatId }, 'Executing cron job');
 
+  const jsonConfig = getJsonConfig();
+
   try {
     const response = await queryClaudeCode(job.instruction, {
       timeout: CRON_TIMEOUT,
+      model: jsonConfig.model,
       additionalInstructions: `
 <cron-execution>
 This is an autonomous cron job execution.
@@ -76,6 +80,7 @@ Complete the task and provide a concise result summary.
     try {
       const retryResponse = await queryClaudeCode(job.instruction, {
         timeout: CRON_TIMEOUT,
+        model: jsonConfig.model,
         additionalInstructions: `
 <cron-execution>
 This is an autonomous cron job execution (retry attempt).
