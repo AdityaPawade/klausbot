@@ -33,7 +33,7 @@ Klausbot connects Telegram to Claude through Claude Code. Send a message, get a 
 ### Quick Start
 
 ```bash
-git clone https://github.com/yourusername/klausbot.git
+git clone https://github.com/thesobercoder/klausbot.git
 cd klausbot
 npm install
 cp .env.example .env
@@ -184,7 +184,7 @@ claude login
 
 ### Need more help?
 
-Open an issue on [GitHub Issues](https://github.com/yourusername/klausbot/issues).
+Open an issue on [GitHub Issues](https://github.com/thesobercoder/klausbot/issues).
 
 ## License
 
