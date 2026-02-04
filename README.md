@@ -24,7 +24,11 @@ Klausbot connects Telegram to Claude through Claude Code. Send a message, get a 
 
 - **Node.js 20+**
 - **Telegram bot token** — Create via [@BotFather](https://t.me/BotFather)
-- **Claude Code** — Install and authenticate: `npm install -g @anthropic-ai/claude-code && claude auth login`
+- **Claude Code** — Install and authenticate:
+  ```bash
+  npm install -g @anthropic-ai/claude-code
+  claude login
+  ```
 
 ### Quick Start
 
@@ -175,7 +179,7 @@ Then restart the bot.
 
 ```bash
 npm install -g @anthropic-ai/claude-code
-claude auth login
+claude login
 ```
 
 ### Need more help?
