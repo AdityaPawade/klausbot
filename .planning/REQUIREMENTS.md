@@ -46,7 +46,7 @@ Requirements for v1.1 Production Ready release.
 - [ ] **PLAT-01**: Works on macOS (Intel and Apple Silicon)
 - [ ] **PLAT-02**: Works on Linux (Ubuntu/Debian, Fedora/RHEL)
 - [ ] **PLAT-03**: Works on Windows via WSL2
-- [ ] **PLAT-04**: Docker support (single container, identical behavior)
+- [ ] **PLAT-04**: Docker support (single container, identical behavior) — **DEFERRED** (per user decision in 17-CONTEXT.md)
 - [ ] **PLAT-05**: execPath detection for self-executable identification
 - [ ] **PLAT-06**: Identical behavior across all supported platforms
 
@@ -103,6 +103,7 @@ Deferred to later milestones.
 - Multi-agent routing (specialized agents for different tasks)
 - Native Windows support (without WSL2)
 - Voice call support (real-time audio)
+- Docker support (PLAT-04 - deferred from v1.1)
 
 ## Out of Scope
 
@@ -165,7 +166,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HRTB-04 | Phase 16 | Pending |
 | HRTB-05 | Phase 16 | Pending |
 | HRTB-06 | Phase 16 | Pending |
-| PLAT-04 | Phase 17 | Pending |
+| PLAT-04 | - | DEFERRED |
 | RLSE-01 | Phase 17 | Pending |
 | RLSE-02 | Phase 17 | Pending |
 | RLSE-03 | Phase 17 | Pending |
@@ -178,9 +179,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 - v1.1 requirements: 49 total
-- Mapped to phases: 49
-- Unmapped: 0
+- Mapped to phases: 48
+- Deferred: 1 (PLAT-04)
 
 ---
 *Requirements defined: 2026-01-31*
-*Last updated: 2026-01-31 after roadmap creation*
+*Last updated: 2026-02-04 - PLAT-04 marked DEFERRED per user decision*
