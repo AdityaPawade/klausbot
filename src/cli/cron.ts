@@ -43,20 +43,26 @@ export async function runCronCLI(args: string[]): Promise<void> {
     case 'update':
       handleUpdate(args.slice(1));
       break;
+    case 'enable':
+      handleEnable(args[1]);
+      break;
+    case 'disable':
+      handleDisable(args[1]);
+      break;
     default:
       console.log(`Usage: klausbot cron <command>
 
 Commands:
-  add      Create a new cron job
-  list     List cron jobs
-  get      Get a cron job by ID
-  delete   Delete a cron job
-  update   Update a cron job
+  list            List cron jobs
+  enable <id>     Enable a cron job
+  disable <id>    Disable a cron job
+  delete <id>     Delete a cron job
 
 Examples:
-  klausbot cron add --name "Morning reminder" --schedule "every day at 9am" --instruction "Say good morning" --chatId 123456
-  klausbot cron list --chatId 123456
-  klausbot cron delete --id abc-123 [--force]
+  klausbot cron list
+  klausbot cron enable abc-123
+  klausbot cron disable abc-123
+  klausbot cron delete --id abc-123
 `);
   }
 }
@@ -157,6 +163,38 @@ function handleGet(args: string[]): void {
   }
 
   console.log(JSON.stringify({ success: true, job }, null, 2));
+}
+
+function handleEnable(id: string | undefined): void {
+  if (!id) {
+    theme.error('Missing job ID');
+    theme.info('Usage: klausbot cron enable <id>');
+    process.exit(1);
+  }
+
+  const job = updateCronJob(id, { enabled: true });
+  if (!job) {
+    theme.error(`Job "${id}" not found`);
+    process.exit(1);
+  }
+
+  theme.success(`Enabled: ${job.name}`);
+}
+
+function handleDisable(id: string | undefined): void {
+  if (!id) {
+    theme.error('Missing job ID');
+    theme.info('Usage: klausbot cron disable <id>');
+    process.exit(1);
+  }
+
+  const job = updateCronJob(id, { enabled: false });
+  if (!job) {
+    theme.error(`Job "${id}" not found`);
+    process.exit(1);
+  }
+
+  theme.success(`Disabled: ${job.name}`);
 }
 
 async function handleDelete(args: string[]): Promise<void> {
