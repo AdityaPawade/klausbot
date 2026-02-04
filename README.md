@@ -13,7 +13,7 @@ Klausbot is an [OpenClaw](https://github.com/openclaw/openclaw) clone built as a
 Klausbot connects Telegram to Claude through Claude Code. Send a message, get a response. It runs on your own machine and maintains conversation history across sessions.
 
 - **24/7 Claude-powered Telegram assistant** - Send messages anytime, get thoughtful responses from Claude
-- **Persistent memory** - Conversations are stored and searchable; Claude can recall what you discussed weeks ago
+- **Persistent memory** - Conversations are stored and searchable; Klausbot can recall what you discussed weeks ago
 - **Scheduled tasks** - Create reminders and recurring tasks using natural language ("remind me every Monday at 9am to review expenses")
 - **Voice transcription** - Send voice messages; Klausbot transcribes and processes them automatically
 - **Semantic search** - Find past conversations by meaning, not just keywords (requires OpenAI API key)
