@@ -70,9 +70,9 @@ Only approved users can interact with the bot.
 
 ### CLI Commands
 
-Start the bot:
+Start the gateway:
 ```bash
-npm run dev
+npm run dev -- daemon
 ```
 
 List scheduled jobs:
