@@ -73,7 +73,6 @@ Run commands with `npm run dev --`:
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start the bot |
-| `npm run dev -- status` | Check config status |
 | `npm run dev -- cron list` | List scheduled jobs |
 | `npm run dev -- cron enable <id>` | Enable a cron job |
 | `npm run dev -- cron disable <id>` | Disable a cron job |

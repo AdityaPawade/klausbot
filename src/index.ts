@@ -173,41 +173,40 @@ program
     ], { indent: 2 });
   });
 
-// setup command
-program
-  .command('setup')
-  .description('First-time setup wizard')
-  .action(async () => {
-    const { runSetupWizard } = await import('./cli/install.js');
-    await runSetupWizard();
-  });
-
-// uninstall command
-program
-  .command('uninstall')
-  .description('Remove background service')
-  .action(async () => {
-    const { runUninstall } = await import('./cli/install.js');
-    await runUninstall();
-  });
-
-// status command
-program
-  .command('status')
-  .description('Check klausbot status')
-  .action(async () => {
-    const { runStatus } = await import('./cli/install.js');
-    await runStatus();
-  });
-
-// restart command
-program
-  .command('restart')
-  .description('Restart background service')
-  .action(async () => {
-    const { runRestart } = await import('./cli/install.js');
-    await runRestart();
-  });
+// Service management commands (commented out for local dev)
+// TODO: Uncomment when publishing as npm package
+//
+// program
+//   .command('setup')
+//   .description('First-time setup wizard')
+//   .action(async () => {
+//     const { runSetupWizard } = await import('./cli/install.js');
+//     await runSetupWizard();
+//   });
+//
+// program
+//   .command('uninstall')
+//   .description('Remove background service')
+//   .action(async () => {
+//     const { runUninstall } = await import('./cli/install.js');
+//     await runUninstall();
+//   });
+//
+// program
+//   .command('status')
+//   .description('Check klausbot status')
+//   .action(async () => {
+//     const { runStatus } = await import('./cli/install.js');
+//     await runStatus();
+//   });
+//
+// program
+//   .command('restart')
+//   .description('Restart background service')
+//   .action(async () => {
+//     const { runRestart } = await import('./cli/install.js');
+//     await runRestart();
+//   });
 
 // cron command
 program
