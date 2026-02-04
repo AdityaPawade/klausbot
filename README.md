@@ -66,19 +66,43 @@ Only approved users can interact with the bot.
 
 ### CLI Commands
 
+Start the bot:
 ```bash
-# Start the bot
 npm run dev
+```
 
-# Cron jobs
+List scheduled jobs:
+```bash
 npm run dev -- cron list
-npm run dev -- cron enable <id>
-npm run dev -- cron disable <id>
+```
 
-# Pairing
+Enable a cron job:
+```bash
+npm run dev -- cron enable <id>
+```
+
+Disable a cron job:
+```bash
+npm run dev -- cron disable <id>
+```
+
+List pending/approved users:
+```bash
 npm run dev -- pairing list
+```
+
+Approve pairing request:
+```bash
 npm run dev -- pairing approve <code>
+```
+
+Reject pairing request:
+```bash
 npm run dev -- pairing reject <code>
+```
+
+Revoke user access:
+```bash
 npm run dev -- pairing revoke <chatId>
 ```
 
