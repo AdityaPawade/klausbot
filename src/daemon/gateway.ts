@@ -33,6 +33,7 @@ import { needsBootstrap, BOOTSTRAP_INSTRUCTIONS } from "../bootstrap/index.js";
 import { validateRequiredCapabilities } from "../platform/index.js";
 import { startScheduler, stopScheduler, loadCronStore } from "../cron/index.js";
 import { startHeartbeat, stopHeartbeat, shouldCollectNote, getNoteCollectionInstructions } from "../heartbeat/index.js";
+import { startTaskWatcher } from "./task-watcher.js";
 import {
   MediaAttachment,
   transcribeAudio,
@@ -51,6 +52,7 @@ const log = createChildLogger("gateway");
 let queue: MessageQueue;
 let isProcessing = false;
 let shouldStop = false;
+let stopTaskWatcher: (() => void) | null = null;
 
 /** Bot instance (loaded dynamically after config validation) */
 let bot: Awaited<typeof import("../telegram/index.js")>["bot"];
@@ -238,6 +240,14 @@ export async function startGateway(): Promise<void> {
   // Initialize heartbeat system
   startHeartbeat();
   log.info("Heartbeat scheduler initialized");
+
+  // Initialize background task watcher
+  stopTaskWatcher = startTaskWatcher({
+    sendMessage: async (chatId: string, text: string) => {
+      await bot.telegram.sendMessage(chatId, text, { parse_mode: "HTML" });
+    },
+  });
+  log.info("Background task watcher initialized");
 
   // Register skill commands in Telegram menu
   await registerSkillCommands(bot);
@@ -523,6 +533,12 @@ export async function stopGateway(): Promise<void> {
 
   // Stop heartbeat scheduler
   stopHeartbeat();
+
+  // Stop background task watcher
+  if (stopTaskWatcher) {
+    stopTaskWatcher();
+    stopTaskWatcher = null;
+  }
 
   // Close database connection
   closeDb();

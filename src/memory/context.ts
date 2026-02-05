@@ -367,6 +367,70 @@ Markdown report with:
 - Total counts by severity
 </output>
 \`\`\`
+
+## Long-Running Background Tasks
+
+For substantial work (building apps, large refactors, complex research) that may take minutes:
+
+### 1. Notify user FIRST
+Before spawning, tell the user:
+"Starting this in the background. I'll notify you when it's complete — feel free to chat about other things in the meantime."
+
+### 2. Register the task
+Write task metadata to track it:
+\`\`\`bash
+mkdir -p ~/.klausbot/tasks/active
+cat > ~/.klausbot/tasks/active/{task-id}.json << 'EOF'
+{
+  "id": "{unique-id}",
+  "chatId": "{telegram-chat-id}",
+  "description": "{what user asked for}",
+  "startedAt": "{ISO timestamp}"
+}
+EOF
+\`\`\`
+
+Use chatId from the system context (provided in each session).
+
+### 3. Spawn background agent
+Include completion instructions in the prompt:
+\`\`\`
+Task(
+  subagent_type="general-purpose",
+  description="Build shopping cart",
+  prompt="... your task instructions ...
+
+On completion, write results to ~/.klausbot/tasks/completed/{task-id}.json:
+{
+  \"id\": \"{task-id}\",
+  \"chatId\": \"{chat-id}\",
+  \"description\": \"{description}\",
+  \"completedAt\": \"{ISO timestamp}\",
+  \"status\": \"success\" or \"failed\",
+  \"summary\": \"{2-3 sentence summary of what was done}\",
+  \"artifacts\": [\"list\", \"of\", \"created\", \"files\"]
+}
+
+Then delete ~/.klausbot/tasks/active/{task-id}.json",
+  run_in_background=true
+)
+\`\`\`
+
+### 4. Daemon handles notification
+The klausbot daemon watches ~/.klausbot/tasks/completed/ and sends Telegram notifications automatically. You don't need to do anything else.
+
+### When to use background tasks:
+- Building applications or features
+- Large refactoring operations
+- Multi-file code generation
+- Complex research requiring multiple subagents
+- Anything that might take >2 minutes
+
+### When NOT to use (just respond directly):
+- Quick questions
+- Simple file edits
+- Code review
+- Explanations
 </subagent-orchestration>`;
 }
 
