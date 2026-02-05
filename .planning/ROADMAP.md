@@ -99,9 +99,9 @@ Plans:
 
 Plans:
 
-- [ ] 12-01-PLAN.md - Heartbeat core (config, scheduler, executor with HEARTBEAT_OK suppression)
-- [ ] 12-02-PLAN.md - Gateway integration (start/stop lifecycle)
-- [ ] 12-03-PLAN.md - Note collection (trigger phrase detection, conversation integration)
+- [x] 12-01-PLAN.md - Heartbeat core (config, scheduler, executor with HEARTBEAT_OK suppression)
+- [x] 12-02-PLAN.md - Gateway integration (start/stop lifecycle)
+- [x] 12-03-PLAN.md - Note collection (trigger phrase detection, conversation integration)
 
 #### Phase 13: Docker & Release
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 14
 | 9. Platform Foundation | v1.1      | 3/3            | Complete    | 2026-01-31 |
 | 10. Telegram Streaming | v1.1      | 2/2            | Complete    | 2026-02-05 |
 | 11. Telegram Threading | v1.1      | 1/1            | Complete    | 2026-02-05 |
-| 12. Heartbeat System   | v1.1      | 0/3            | Planned     | -          |
+| 12. Heartbeat System   | v1.1      | 3/3            | Complete    | 2026-02-05 |
 | 13. Docker & Release   | v1.1      | 2/2            | Complete    | 2026-02-05 |
 | 14. Testing Framework  | v1.1      | 0/4            | Not started | -          |
 

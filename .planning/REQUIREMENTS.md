@@ -71,12 +71,12 @@ Requirements for v1.1 Production Ready release.
 
 ### Heartbeat
 
-- [ ] **HRTB-01**: HEARTBEAT.md file support in workspace
-- [ ] **HRTB-02**: Periodic heartbeat check (30m default, configurable)
-- [ ] **HRTB-03**: `HEARTBEAT_OK` response contract (suppresses if nothing to report)
-- [ ] **HRTB-04**: User can save notes to HEARTBEAT.md via conversation ("remember to check X")
-- [ ] **HRTB-05**: Heartbeat distinct from cron (awareness vs scheduled tasks)
-- [ ] **HRTB-06**: Heartbeat configurable (interval, enabled/disabled)
+- [x] **HRTB-01**: HEARTBEAT.md file support in workspace
+- [x] **HRTB-02**: Periodic heartbeat check (30m default, configurable)
+- [x] **HRTB-03**: `HEARTBEAT_OK` response contract (suppresses if nothing to report)
+- [x] **HRTB-04**: User can save notes to HEARTBEAT.md via conversation ("remember to check X")
+- [x] **HRTB-05**: Heartbeat distinct from cron (awareness vs scheduled tasks)
+- [x] **HRTB-06**: Heartbeat configurable (interval, enabled/disabled)
 
 ### Testing
 
@@ -160,12 +160,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STRM-04     | Phase 10 | Complete |
 | TELE-01     | Phase 11 | Complete |
 | TELE-02     | Phase 11 | Complete |
-| HRTB-01     | Phase 12 | Pending  |
-| HRTB-02     | Phase 12 | Pending  |
-| HRTB-03     | Phase 12 | Pending  |
-| HRTB-04     | Phase 12 | Pending  |
-| HRTB-05     | Phase 12 | Pending  |
-| HRTB-06     | Phase 12 | Pending  |
+| HRTB-01     | Phase 12 | Complete |
+| HRTB-02     | Phase 12 | Complete |
+| HRTB-03     | Phase 12 | Complete |
+| HRTB-04     | Phase 12 | Complete |
+| HRTB-05     | Phase 12 | Complete |
+| HRTB-06     | Phase 12 | Complete |
 | PLAT-04     | -        | DEFERRED |
 | RLSE-01     | Phase 17 | Complete |
 | RLSE-02     | Phase 17 | Complete |
