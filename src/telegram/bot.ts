@@ -1,6 +1,7 @@
 import { Bot, Context, GrammyError, HttpError } from "grammy";
 import { run, sequentialize } from "@grammyjs/runner";
 import { autoRetry } from "@grammyjs/auto-retry";
+import { apiThrottler } from "@grammyjs/transformer-throttler";
 import {
   autoChatAction,
   AutoChatActionFlavor,
@@ -22,6 +23,17 @@ bot.api.config.use(
   autoRetry({
     maxRetryAttempts: 3,
     maxDelaySeconds: 300,
+  }),
+);
+
+// Configure throttler for draft message rate limiting
+// Placed after autoRetry so retries happen on rate-limited requests
+bot.api.config.use(
+  apiThrottler({
+    out: {
+      maxConcurrent: 1,
+      minTime: 100, // Allow faster for drafts, let Telegram reject if needed
+    },
   }),
 );
 

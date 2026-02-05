@@ -6,3 +6,9 @@ export {
   getInstalledSkillNames,
   translateSkillCommand,
 } from "./skills.js";
+export {
+  streamClaudeResponse,
+  type StreamConfig,
+  type StreamOptions,
+  type StreamResult,
+} from "./streaming.js";
