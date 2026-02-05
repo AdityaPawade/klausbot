@@ -108,7 +108,7 @@ Configure in `.env` file:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Yes | - | Telegram bot token from @BotFather |
-| `CLAUDE_CODE_OAUTH_TOKEN` | Yes | - | Claude Code token from `claude setup-token` |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Container | - | Claude Code token from `claude setup-token` |
 | `OPENAI_API_KEY` | No | - | OpenAI API key for semantic memory search |
 | `LOG_LEVEL` | No | `info` | Log level (silent/trace/debug/info/warn/error/fatal) |
 
