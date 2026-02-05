@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 
 ## Current Position
 
-Phase: 13.1 of 14 (Dockerfile Dependencies)
+Phase: 13.2 of 14 (Subagent Orchestration)
 Plan: 1/1 complete
 Status: Phase complete
-Last activity: 2026-02-05 — Dockerfile dependencies (Python, uv, pnpm, agent tools)
+Last activity: 2026-02-05 — Subagent orchestration (Task tool enablement)
 
-Progress: [█████████████░] 86% (phases 9, 10, 11, 12, 13, 13.1 complete; 14 remaining)
+Progress: [██████████████░] 93% (phases 9, 10, 11, 12, 13, 13.1, 13.2 complete; 14 remaining)
 
 ## Milestone Summary
 
@@ -41,19 +41,20 @@ Progress: [█████████████░] 86% (phases 9, 10, 11, 12
 
 **Velocity:**
 
-- Total plans completed: 11 (v1.1)
-- Average duration: 3m 03s
-- Total execution time: 33m 20s
+- Total plans completed: 12 (v1.1)
+- Average duration: 3m 06s
+- Total execution time: 37m 20s
 
 **By Phase:**
 
-| Phase                  | Plans | Total   | Avg/Plan |
-| ---------------------- | ----- | ------- | -------- |
-| 09-platform-foundation | 3/3   | 11m 14s | 3m 45s   |
-| 10-telegram-streaming  | 2/2   | 7m 29s  | 3m 45s   |
-| 11-telegram-threading  | 1/1   | 4m 00s  | 4m 00s   |
-| 13-docker-release      | 2/2   | 4m 02s  | 2m 01s   |
-| 12-heartbeat-system    | 3/3   | 6m 35s  | 2m 12s   |
+| Phase                      | Plans | Total   | Avg/Plan |
+| -------------------------- | ----- | ------- | -------- |
+| 09-platform-foundation     | 3/3   | 11m 14s | 3m 45s   |
+| 10-telegram-streaming      | 2/2   | 7m 29s  | 3m 45s   |
+| 11-telegram-threading      | 1/1   | 4m 00s  | 4m 00s   |
+| 13-docker-release          | 2/2   | 4m 02s  | 2m 01s   |
+| 12-heartbeat-system        | 3/3   | 6m 35s  | 2m 12s   |
+| 13.2-subagent-orchestration| 1/1   | 4m 00s  | 4m 00s   |
 
 _Updated after each plan completion_
 
@@ -99,10 +100,14 @@ _Updated after each plan completion_
 - Heartbeat: Hot reload via config re-check on each tick
 - Heartbeat: Gateway integration keeps cron and heartbeat schedulers together in lifecycle
 - Heartbeat: Note collection uses regex triggers; Claude interprets intent (not verbatim storage)
+- Subagents: Enabled by default (true) - assumes users want full capability
+- Subagents: Task list ID includes chatId and timestamp - unique per chat session
+- Subagents: Orchestration instructions skip bootstrap mode - identity must exist first
 
 ### Roadmap Evolution
 
 - Phase 13.1 inserted after Phase 13: Dockerfile Dependencies (URGENT) — Python + other runtime deps
+- Phase 13.2 inserted after Phase 13.1: Subagent Orchestration — Claude spawning Claudes, agent-to-agent comms
 
 ### Pending Todos
 
@@ -115,7 +120,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed Phase 13.1 (Dockerfile Dependencies)
+Stopped at: Completed Phase 13.2 (Subagent Orchestration)
 Resume file: None
 
 ## Next Steps
@@ -124,5 +129,5 @@ Resume file: None
 
 ---
 
-_State updated: 2026-02-05 (Phase 13.1 complete)_
+_State updated: 2026-02-05 (Phase 13.2 complete)_
 _v1.1 in progress_
