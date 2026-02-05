@@ -2,13 +2,13 @@
 
 ## Milestones
 
-- ✅ **v1.0 MVP** - Phases 1-8 (shipped 2026-01-31)
-- 🚧 **v1.1 Production Ready** - Phases 9-14 (in progress)
+- **v1.0 MVP** - Phases 1-8 (shipped 2026-01-31)
+- **v1.1 Production Ready** - Phases 9-14 (in progress)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 MVP (Phases 1-8) - SHIPPED 2026-01-31</summary>
+<summary>v1.0 MVP (Phases 1-8) - SHIPPED 2026-01-31</summary>
 
 See archived roadmap: `.planning/milestones/v1-ROADMAP.md`
 
@@ -21,7 +21,7 @@ Summary:
 
 </details>
 
-### 🚧 v1.1 Production Ready (In Progress)
+### v1.1 Production Ready (In Progress)
 
 **Milestone Goal:** Polish klausbot for release with proper setup, cross-platform support, streaming, and comprehensive testing.
 
@@ -61,12 +61,12 @@ Plans:
 2. Draft updates are throttled to avoid Telegram API rate limits
 3. Final message replaces draft when streaming completes
 4. Streaming can be disabled via config
-   **Plans**: TBD
+   **Plans**: 2 plans
 
 Plans:
 
-- [ ] 10-01: Telegram draft streaming
-- [ ] 10-02: Throttling and finalization
+- [ ] 10-01-PLAN.md - Streaming infrastructure (config, throttler, Claude stream spawner)
+- [ ] 10-02-PLAN.md - Gateway integration and Telegram draft streaming
 
 #### Phase 11: Telegram Threading
 
@@ -119,8 +119,8 @@ Plans:
 
 Plans:
 
-- [x] 13-01-PLAN.md — Documentation files (LICENSE, .env.example, README.md)
-- [x] 13-02-PLAN.md — User review checkpoint (fill story, add screenshots)
+- [x] 13-01-PLAN.md - Documentation files (LICENSE, .env.example, README.md)
+- [x] 13-02-PLAN.md - User review checkpoint (fill story, add screenshots)
 
 #### Phase 14: Testing Framework
 
@@ -145,15 +145,15 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 9 → 10 → 11 → 12 → 13 → 14
+Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 14
 
 | Phase                  | Milestone | Plans Complete | Status      | Completed  |
 | ---------------------- | --------- | -------------- | ----------- | ---------- |
-| 9. Platform Foundation | v1.1      | 3/3            | ✓ Complete  | 2026-01-31 |
+| 9. Platform Foundation | v1.1      | 3/3            | Complete    | 2026-01-31 |
 | 10. Telegram Streaming | v1.1      | 0/2            | Not started | -          |
 | 11. Telegram Threading | v1.1      | 0/1            | Not started | -          |
 | 12. Heartbeat System   | v1.1      | 0/3            | Not started | -          |
-| 13. Docker & Release   | v1.1      | 2/2            | ✓ Complete  | 2026-02-05 |
+| 13. Docker & Release   | v1.1      | 2/2            | Complete    | 2026-02-05 |
 | 14. Testing Framework  | v1.1      | 0/4            | Not started | -          |
 
 ---
