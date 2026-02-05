@@ -55,14 +55,11 @@ First, generate a Claude Code token on your host machine:
 claude setup-token
 ```
 
-Then run the container with the token:
+Then configure `.env` with your tokens and run:
 ```bash
-docker build -t klausbot .
-docker run -d \
-  -e TELEGRAM_BOT_TOKEN=your-token \
-  -e CLAUDE_CODE_OAUTH_TOKEN=your-claude-token \
-  -v klausbot-data:/home/klausbot/.klausbot \
-  klausbot
+cp .env.example .env
+# Edit .env with TELEGRAM_BOT_TOKEN and CLAUDE_CODE_OAUTH_TOKEN
+docker compose up -d
 ```
 
 ### Pairing Your Telegram Account
