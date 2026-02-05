@@ -6,7 +6,7 @@ import {
 } from "../telegram/index.js";
 import { MessageQueue, queryClaudeCode, ensureDataDir } from "./index.js";
 import { getJsonConfig } from "../config/index.js";
-import type { QueuedMessage } from "./queue.js";
+import type { QueuedMessage, ThreadingContext } from "./queue.js";
 import {
   initPairingStore,
   createPairingMiddleware,
@@ -320,8 +320,14 @@ export async function startGateway(): Promise<void> {
     // Translate skill commands: /skill_creator → /skill skill-creator
     const text = translateSkillCommand(rawText);
 
+    // Extract threading context for forum topics and reply linking
+    const threading: ThreadingContext = {
+      messageThreadId: ctx.msg?.message_thread_id,
+      replyToMessageId: ctx.msg?.message_id,
+    };
+
     // Add to queue - typing indicator shown by autoChatAction middleware
-    const queueId = queue.add(chatId, text);
+    const queueId = queue.add(chatId, text, undefined, threading);
     log.info(
       { chatId, queueId, translated: text !== rawText },
       "Message queued",
@@ -364,7 +370,13 @@ export async function startGateway(): Promise<void> {
       // Voice messages don't have captions in Telegram
       const text = "";
 
-      const queueId = queue.add(chatId, text, media);
+      // Extract threading context for forum topics and reply linking
+      const threading: ThreadingContext = {
+        messageThreadId: ctx.msg?.message_thread_id,
+        replyToMessageId: ctx.msg?.message_id,
+      };
+
+      const queueId = queue.add(chatId, text, media, threading);
       log.info({ chatId, queueId, mediaCount: 1 }, "Voice message queued");
 
       processQueue().catch((err) => {
@@ -415,7 +427,13 @@ export async function startGateway(): Promise<void> {
       // Get caption if any
       const text = ctx.message?.caption ?? "";
 
-      const queueId = queue.add(chatId, text, media);
+      // Extract threading context for forum topics and reply linking
+      const threading: ThreadingContext = {
+        messageThreadId: ctx.msg?.message_thread_id,
+        replyToMessageId: ctx.msg?.message_id,
+      };
+
+      const queueId = queue.add(chatId, text, media, threading);
       log.info(
         { chatId, queueId, mediaCount: 1, hasCaption: !!text },
         "Photo message queued",
@@ -575,6 +593,12 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
       await bot.api.sendMessage(
         msg.chatId,
         `Could not process media: ${mediaErrors.join(". ")}`,
+        {
+          message_thread_id: msg.threading?.messageThreadId,
+          reply_parameters: msg.threading?.replyToMessageId
+            ? { message_id: msg.threading.replyToMessageId }
+            : undefined,
+        },
       );
       return;
     }
@@ -623,6 +647,7 @@ Use this chatId when creating cron jobs.
           {
             model: jsonConfig.model,
             additionalInstructions,
+            messageThreadId: msg.threading?.messageThreadId,
           },
         );
 
@@ -634,9 +659,14 @@ Use this chatId when creating cron jobs.
 
         // Send final message (replaces draft in UI)
         if (streamResult.result) {
-          await splitAndSend(msg.chatId, streamResult.result);
+          await splitAndSend(msg.chatId, streamResult.result, msg.threading);
         } else {
-          await bot.api.sendMessage(msg.chatId, "[Empty response]");
+          await bot.api.sendMessage(msg.chatId, "[Empty response]", {
+            message_thread_id: msg.threading?.messageThreadId,
+            reply_parameters: msg.threading?.replyToMessageId
+              ? { message_id: msg.threading.replyToMessageId }
+              : undefined,
+          });
         }
 
         // Invalidate identity cache
@@ -647,6 +677,9 @@ Use this chatId when creating cron jobs.
           await bot.api.sendMessage(
             msg.chatId,
             `Note: Some media could not be processed: ${mediaErrors.join(". ")}`,
+            {
+              message_thread_id: msg.threading?.messageThreadId,
+            },
           );
         }
 
@@ -695,13 +728,19 @@ Use this chatId when creating cron jobs.
       await bot.api.sendMessage(
         msg.chatId,
         `Error (Claude): ${response.result}`,
+        {
+          message_thread_id: msg.threading?.messageThreadId,
+          reply_parameters: msg.threading?.replyToMessageId
+            ? { message_id: msg.threading.replyToMessageId }
+            : undefined,
+        },
       );
     } else {
       // Invalidate identity cache after Claude response
       // Claude may have updated identity files during session
       invalidateIdentityCache();
 
-      const messages = await splitAndSend(msg.chatId, response.result);
+      const messages = await splitAndSend(msg.chatId, response.result, msg.threading);
       log.debug(
         { chatId: msg.chatId, chunks: messages },
         "Sent response chunks",
@@ -712,6 +751,9 @@ Use this chatId when creating cron jobs.
         await bot.api.sendMessage(
           msg.chatId,
           `Note: Some media could not be processed: ${mediaErrors.join(". ")}`,
+          {
+            message_thread_id: msg.threading?.messageThreadId,
+          },
         );
       }
     }
@@ -742,7 +784,14 @@ Use this chatId when creating cron jobs.
     const userMessage = `Error (${category}): ${getBriefDescription(error)}`;
 
     // Send error to user
-    await bot.api.sendMessage(msg.chatId, userMessage).catch(() => {});
+    await bot.api
+      .sendMessage(msg.chatId, userMessage, {
+        message_thread_id: msg.threading?.messageThreadId,
+        reply_parameters: msg.threading?.replyToMessageId
+          ? { message_id: msg.threading.replyToMessageId }
+          : undefined,
+      })
+      .catch(() => {});
 
     // Mark as failed
     queue.fail(msg.id, error.message);
@@ -757,8 +806,13 @@ Use this chatId when creating cron jobs.
 /**
  * Split and send a long message directly via bot API
  * Converts Markdown to Telegram HTML for proper formatting
+ * First chunk replies to original message; subsequent chunks in same thread only
  */
-async function splitAndSend(chatId: number, text: string): Promise<number> {
+async function splitAndSend(
+  chatId: number,
+  text: string,
+  threading?: ThreadingContext,
+): Promise<number> {
   const MAX_LENGTH = 4096;
   const chunks: string[] = [];
 
@@ -792,13 +846,28 @@ async function splitAndSend(chatId: number, text: string): Promise<number> {
   }
 
   // Send chunks with delay, using HTML parse mode
-  for (const chunk of chunks) {
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
     try {
-      await bot.api.sendMessage(chatId, chunk, { parse_mode: "HTML" });
+      await bot.api.sendMessage(chatId, chunk, {
+        parse_mode: "HTML",
+        message_thread_id: threading?.messageThreadId,
+        // Only reply to original message for first chunk
+        reply_parameters:
+          i === 0 && threading?.replyToMessageId
+            ? { message_id: threading.replyToMessageId }
+            : undefined,
+      });
     } catch (err) {
       // If HTML parsing fails, fall back to plain text
       log.warn({ err, chatId }, "HTML parse failed, sending as plain text");
-      await bot.api.sendMessage(chatId, text.slice(0, MAX_LENGTH));
+      await bot.api.sendMessage(chatId, text.slice(0, MAX_LENGTH), {
+        message_thread_id: threading?.messageThreadId,
+        reply_parameters:
+          i === 0 && threading?.replyToMessageId
+            ? { message_id: threading.replyToMessageId }
+            : undefined,
+      });
     }
     if (chunks.length > 1) {
       await new Promise((resolve) => setTimeout(resolve, 100));
