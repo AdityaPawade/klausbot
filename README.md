@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> **Experimental Software**: This project runs Claude Code with `--dangerously-skip-permissions`, which bypasses safety prompts and allows unrestricted file/command access. Run in a sandboxed environment (VM, container, or dedicated user account). Use at your own risk.
+> **Experimental Software**: This project runs Claude Code with `--dangerously-skip-permissions`, which bypasses safety prompts and allows unrestricted file/command access. The container provides isolation. Use at your own risk.
 
 ## Why I Built It
 
@@ -10,30 +10,27 @@ Klausbot is an [OpenClaw](https://github.com/openclaw/openclaw) clone built as a
 
 ## Philosophy
 
-Klausbot is designed to be **forked and self-hosted**. You clone the repo, configure your tokens, and run it on your own VM or in Docker. There's no npm package to install globally, no setup wizards, no service management commands — just a simple daemon that starts up and works.
-
-The daemon auto-creates `~/.klausbot/` on first run. If something's misconfigured, it fails with a clear error message.
+Klausbot is designed to **run inside a container**. Whether locally or on a remote server, the container is the deployment unit. This provides isolation for Claude Code's unrestricted file access and makes deployment consistent everywhere.
 
 ## What It Does
 
-Klausbot connects Telegram to Claude through Claude Code. Send a message, get a response. It runs on your own machine and maintains conversation history across sessions.
+Klausbot connects Telegram to Claude through Claude Code. Send a message, get a response. It maintains conversation history across sessions.
 
-- **24/7 Claude-powered Telegram assistant** - Send messages anytime, get thoughtful responses from Claude
-- **Persistent memory** - Conversations are stored and searchable; Klausbot can recall what you discussed weeks ago
-- **Scheduled tasks** - Create reminders and recurring tasks using natural language ("remind me every Monday at 9am to review expenses")
-- **Voice transcription** - Send voice messages; Klausbot transcribes and processes them automatically
-- **Semantic search** - Find past conversations by meaning, not just keywords (requires OpenAI API key)
+- **24/7 Claude-powered Telegram assistant** - Send messages anytime, get thoughtful responses
+- **Persistent memory** - Conversations stored and searchable; recalls discussions from weeks ago
+- **Scheduled tasks** - Natural language reminders ("remind me every Monday at 9am to review expenses")
+- **Voice transcription** - Send voice messages; transcribed and processed automatically
+- **Semantic search** - Find past conversations by meaning (requires OpenAI API key)
 
 ## Installation
 
 ### Prerequisites
 
-- **Node.js 20+**
+- **Docker** and **Docker Compose**
 - **Telegram bot token** — Create via [@BotFather](https://t.me/BotFather)
-- **Claude Code** — Install and authenticate:
+- **Claude Code token** — Generate on any machine with Claude Code installed:
   ```bash
-  npm install -g @anthropic-ai/claude-code
-  claude login
+  claude setup-token
   ```
 
 ### Quick Start
@@ -41,39 +38,18 @@ Klausbot connects Telegram to Claude through Claude Code. Send a message, get a 
 ```bash
 git clone https://github.com/thesobercoder/klausbot.git
 cd klausbot
-npm install
-cp .env.example .env
-# Edit .env with your TELEGRAM_BOT_TOKEN
-npm run build
-npm run dev -- daemon
-```
-
-### Docker
-
-First, generate a Claude Code token on your host machine:
-```bash
-claude setup-token
-```
-
-Then configure `.env` with your tokens and run:
-```bash
 cp .env.example .env
 # Edit .env with TELEGRAM_BOT_TOKEN and CLAUDE_CODE_OAUTH_TOKEN
 docker compose up -d
-```
-
-To approve pairing requests:
-```bash
-docker compose exec klausbot node dist/index.js pairing approve XXXXXX
 ```
 
 ### Pairing Your Telegram Account
 
 1. Find your bot on Telegram (the username you created with @BotFather)
 2. Send `/start` — the bot displays a 6-character pairing code
-3. In another terminal, approve the pairing:
+3. Approve the pairing:
    ```bash
-   npm run dev -- pairing approve XXXXXX
+   docker compose exec klausbot node dist/index.js pairing approve XXXXXX
    ```
 4. You're connected! Send any message to chat with Claude.
 
@@ -81,31 +57,36 @@ Only approved users can interact with the bot.
 
 ## Usage
 
-### CLI Commands
+### Container Commands
 
-Start the gateway:
+View logs:
 ```bash
-npm run dev -- daemon
+docker compose logs -f
 ```
 
 List pending/approved users:
 ```bash
-npm run dev -- pairing list
+docker compose exec klausbot node dist/index.js pairing list
 ```
 
 Approve pairing request:
 ```bash
-npm run dev -- pairing approve <code>
+docker compose exec klausbot node dist/index.js pairing approve <code>
 ```
 
 Reject pairing request:
 ```bash
-npm run dev -- pairing reject <code>
+docker compose exec klausbot node dist/index.js pairing reject <code>
 ```
 
 Revoke user access:
 ```bash
-npm run dev -- pairing revoke <chatId>
+docker compose exec klausbot node dist/index.js pairing revoke <chatId>
+```
+
+Restart:
+```bash
+docker compose restart
 ```
 
 ### Telegram Commands
@@ -122,26 +103,18 @@ npm run dev -- pairing revoke <chatId>
 
 ### Environment Variables
 
-Environment variables are loaded from `.env` in the project folder or `~/.klausbot/.env` (both work):
-
-```bash
-cp .env.example .env
-```
+Configure in `.env` file:
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Yes | - | Telegram bot token from @BotFather |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Yes | - | Claude Code token from `claude setup-token` |
 | `OPENAI_API_KEY` | No | - | OpenAI API key for semantic memory search |
 | `LOG_LEVEL` | No | `info` | Log level (silent/trace/debug/info/warn/error/fatal) |
 
 ### JSON Configuration
 
-Optional configuration in `~/.klausbot/config/klausbot.json`:
-
-```bash
-mkdir -p ~/.klausbot/config
-cp klausbot.json.example ~/.klausbot/config/klausbot.json
-```
+Optional configuration mounted at `/home/klausbot/.klausbot/config/klausbot.json`:
 
 | Key | Default | Description |
 |-----|---------|-------------|
@@ -153,37 +126,48 @@ If `model` is not set, Klausbot uses your Claude Code default.
 
 ### Bot not responding?
 
-1. Check the terminal running `npm run dev -- daemon` for errors
-2. Verify bot token format: `123456789:ABC-DEF...`
+Check container logs:
+```bash
+docker compose logs -f
+```
+
+Verify bot token format: `123456789:ABC-DEF...`
 
 ### Memory search not working?
 
 Semantic search requires an OpenAI API key. Add to `.env`:
-
 ```bash
 OPENAI_API_KEY=sk-your-key-here
 ```
 
-Then restart the bot.
+Then restart: `docker compose restart`
 
 ### Pairing code not working?
 
 1. Codes are case-insensitive but must match exactly
 2. Codes expire after 15 minutes — send `/start` again for a new one
-3. Check pending requests: `npm run dev -- pairing list`
-
-### Claude Code not authenticated?
-
-```bash
-npm install -g @anthropic-ai/claude-code
-claude login
-```
+3. Check pending requests:
+   ```bash
+   docker compose exec klausbot node dist/index.js pairing list
+   ```
 
 ### Need more help?
 
 Open an issue on [GitHub Issues](https://github.com/thesobercoder/klausbot/issues).
 
+## Development
+
+For local development without Docker:
+
+```bash
+npm install
+cp .env.example .env
+# Edit .env with TELEGRAM_BOT_TOKEN
+# Ensure Claude Code is installed and authenticated: claude login
+npm run build
+npm run dev -- daemon
+```
+
 ## License
 
 MIT - see [LICENSE](LICENSE)
-
