@@ -19,6 +19,10 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 # Add Claude Code to PATH
 ENV PATH="/home/klausbot/.local/bin:${PATH}"
 
+# Install skills
+RUN npx -y skills@latest add https://github.com/anthropics/skills --skill skill-creator -y -a claude-code -g
+RUN npx -y skills@latest add https://github.com/vercel-labs/skills --skill find-skills -y -a claude-code -g
+
 # Switch back to root for app setup
 USER root
 WORKDIR /app
