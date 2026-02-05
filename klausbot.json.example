@@ -1,3 +1,11 @@
 {
-  "model": "sonnet"
+  "model": "sonnet",
+  "streaming": {
+    "enabled": true,
+    "throttleMs": 500
+  },
+  "heartbeat": {
+    "enabled": true,
+    "intervalMs": 1800000
+  }
 }
