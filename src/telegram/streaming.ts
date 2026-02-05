@@ -90,10 +90,25 @@ export async function streamClaudeResponse(
     let accumulated = "";
     let costUsd = 0;
     let sessionId = "";
+    let timedOut = false;
+
+    // Set up timeout (5 minutes, matches batch spawner)
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      log.warn({ resultLength: accumulated.length }, "Stream timed out, killing process");
+      claude.kill("SIGTERM");
+      // Force kill if SIGTERM doesn't work after 5s
+      setTimeout(() => {
+        if (!claude.killed) {
+          claude.kill("SIGKILL");
+        }
+      }, 5000);
+    }, DEFAULT_TIMEOUT);
 
     // Handle abort signal
     if (options.signal) {
       options.signal.addEventListener("abort", () => {
+        clearTimeout(timeoutId);
         claude.kill("SIGTERM");
       });
     }
@@ -129,18 +144,30 @@ export async function streamClaudeResponse(
     });
 
     rl.on("close", () => {
-      log.info(
-        {
-          resultLength: accumulated.length,
-          cost_usd: costUsd,
-          session_id: sessionId,
-        },
-        "Stream completed",
-      );
-      resolve({ result: accumulated, cost_usd: costUsd });
+      clearTimeout(timeoutId);
+
+      if (timedOut) {
+        // Return partial result on timeout instead of error
+        log.warn(
+          { resultLength: accumulated.length },
+          "Stream timed out, returning partial result",
+        );
+        resolve({ result: accumulated, cost_usd: 0 });
+      } else {
+        log.info(
+          {
+            resultLength: accumulated.length,
+            cost_usd: costUsd,
+            session_id: sessionId,
+          },
+          "Stream completed",
+        );
+        resolve({ result: accumulated, cost_usd: costUsd });
+      }
     });
 
     claude.on("error", (err) => {
+      clearTimeout(timeoutId);
       log.error({ err }, "Stream spawn error");
       reject(err);
     });
