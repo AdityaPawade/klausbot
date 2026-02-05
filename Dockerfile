@@ -9,12 +9,9 @@ RUN apt-get update && \
       gnupg \
       python3 \
       python3-pip \
-      poppler-utils \
-      ffmpeg \
-      libavcodec-extra \
-      libavformat-dev \
       ripgrep \
       jq \
+      poppler-utils \
       imagemagick \
       pandoc \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
