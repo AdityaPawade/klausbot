@@ -26,7 +26,7 @@ const TRIGGER_PHRASES = [
  * @returns true if message should trigger note collection
  */
 export function shouldCollectNote(text: string): boolean {
-  return TRIGGER_PHRASES.some(pattern => pattern.test(text));
+  return TRIGGER_PHRASES.some((pattern) => pattern.test(text));
 }
 
 /**

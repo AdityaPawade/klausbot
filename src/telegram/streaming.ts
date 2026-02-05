@@ -3,6 +3,7 @@ import { createInterface } from "readline";
 import { Bot } from "grammy";
 import { createChildLogger } from "../utils/index.js";
 import { KLAUSBOT_HOME, buildSystemPrompt } from "../memory/index.js";
+import { writeMcpConfigFile, getHooksConfig } from "../daemon/index.js";
 
 const log = createChildLogger("streaming");
 
@@ -33,6 +34,8 @@ export interface StreamOptions {
   enableSubagents?: boolean;
   /** Task list ID for multi-session coordination */
   taskListId?: string;
+  /** Telegram chat ID — propagated to hooks/MCP for per-chat memory isolation */
+  chatId?: number;
 }
 
 /** Result from streaming Claude response */
@@ -66,17 +69,23 @@ export async function streamClaudeResponse(
   // Wrap prompt in XML tags for security (same as spawner.ts)
   const wrappedPrompt = `<user_message>\n${prompt}\n</user_message>`;
 
-  // Build args - note: no --mcp-config or --settings for streaming
-  // (hooks don't make sense for streaming, MCP tools work differently)
+  // Write MCP config and hooks settings (same as batch path)
+  const mcpConfigPath = writeMcpConfigFile();
+  const settingsJson = JSON.stringify(getHooksConfig());
+
   const args = [
     "--dangerously-skip-permissions",
     "-p",
     wrappedPrompt,
     "--output-format",
     "stream-json",
-    "--include-partial-messages",
+    "--verbose",
     "--append-system-prompt",
     systemPrompt,
+    "--mcp-config",
+    mcpConfigPath,
+    "--settings",
+    settingsJson,
   ];
 
   if (options.model) {
@@ -89,10 +98,13 @@ export async function streamClaudeResponse(
   }
 
   return new Promise((resolve, reject) => {
-    // Build environment with optional task list ID
+    // Build environment with optional task list ID and chat ID
     const env = { ...process.env };
     if (options.taskListId) {
       env.CLAUDE_CODE_TASK_LIST_ID = options.taskListId;
+    }
+    if (options.chatId !== undefined) {
+      env.KLAUSBOT_CHAT_ID = String(options.chatId);
     }
 
     // CRITICAL: stdin must inherit to avoid hang bug (same as spawner.ts)
@@ -110,7 +122,10 @@ export async function streamClaudeResponse(
     // Set up timeout (90s — fast dispatcher limit)
     const timeoutId = setTimeout(() => {
       timedOut = true;
-      log.warn({ resultLength: accumulated.length }, "Stream timed out, killing process");
+      log.warn(
+        { resultLength: accumulated.length },
+        "Stream timed out, killing process",
+      );
       claude.kill("SIGTERM");
       // Force kill if SIGTERM doesn't work after 5s
       setTimeout(() => {
@@ -197,8 +212,8 @@ export async function streamClaudeResponse(
 }
 
 /**
- * Check if chat supports draft streaming.
- * Requires private chat with forum topics enabled (BotFather "Threaded Mode").
+ * Check if chat supports streaming.
+ * Enabled for private chats and supergroups (topic groups).
  */
 export async function canStreamToChat(
   bot: Bot<any>,
@@ -206,8 +221,7 @@ export async function canStreamToChat(
 ): Promise<boolean> {
   try {
     const chat = await bot.api.getChat(chatId);
-    // Draft streaming requires private chat with topics enabled
-    return chat.type === "private" && Boolean((chat as any).has_topics_enabled);
+    return chat.type === "private" || chat.type === "supergroup";
   } catch {
     return false;
   }
@@ -225,6 +239,8 @@ export interface StreamToTelegramOptions {
   enableSubagents?: boolean;
   /** Task list ID for multi-session coordination */
   taskListId?: string;
+  /** Telegram chat ID — propagated for per-chat memory isolation */
+  chatId?: number;
 }
 
 /**
@@ -278,6 +294,7 @@ export async function streamToTelegram(
         signal: controller.signal,
         enableSubagents: options?.enableSubagents,
         taskListId: options?.taskListId,
+        chatId: options?.chatId,
       },
       onChunk,
     );

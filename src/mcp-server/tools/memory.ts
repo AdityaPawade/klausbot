@@ -53,23 +53,28 @@ Returns matching memories and conversation summaries with session IDs for drill-
     },
     async ({ query, limit, days_back, include_conversations }) => {
       try {
+        // Read chat ID from env for per-chat memory isolation
+        const chatId = process.env.KLAUSBOT_CHAT_ID
+          ? Number(process.env.KLAUSBOT_CHAT_ID)
+          : undefined;
         log.info(
-          { query, limit, days_back, include_conversations },
+          { query, limit, days_back, include_conversations, chatId },
           "search_memories called",
         );
 
-        // Search embeddings
+        // Search embeddings (not chat-scoped — shared knowledge base)
         const embeddingResults = await semanticSearch(query, {
           topK: limit,
           daysBack: days_back,
         });
 
-        // Search conversations if enabled
+        // Search conversations if enabled (scoped to current chat)
         let conversationResults: ConversationSearchResult[] = [];
         if (include_conversations) {
           conversationResults = searchConversations(query, {
             topK: limit,
             daysBack: days_back,
+            chatId,
           });
         }
 

@@ -3,7 +3,7 @@
  * Stores and retrieves conversation transcripts with summaries
  */
 
-import { eq, desc, gte } from "drizzle-orm";
+import { eq, desc, gte, and } from "drizzle-orm";
 import { getDrizzle } from "./db.js";
 import { conversations } from "./schema.js";
 import OpenAI from "openai";
@@ -176,33 +176,39 @@ export function storeConversation(record: ConversationRecord): void {
 
 /**
  * Get recent conversation summaries for context injection
+ * Filters by chatId when provided for per-chat memory isolation
  */
 export function getRecentConversations(
   limit: number = 3,
   daysBack?: number,
+  chatId?: number,
 ): ConversationRecord[] {
   const db = getDrizzle();
 
-  let query = db
-    .select()
-    .from(conversations)
-    .orderBy(desc(conversations.endedAt))
-    .limit(limit)
-    .$dynamic();
-
+  const conditions = [];
   if (daysBack) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - daysBack);
-    query = db
-      .select()
-      .from(conversations)
-      .where(gte(conversations.endedAt, cutoff.toISOString()))
-      .orderBy(desc(conversations.endedAt))
-      .limit(limit)
-      .$dynamic();
+    conditions.push(gte(conversations.endedAt, cutoff.toISOString()));
+  }
+  if (chatId !== undefined) {
+    conditions.push(eq(conversations.chatId, chatId));
   }
 
-  return query.all() as ConversationRecord[];
+  const where =
+    conditions.length > 0
+      ? conditions.length === 1
+        ? conditions[0]
+        : and(...conditions)
+      : undefined;
+
+  return db
+    .select()
+    .from(conversations)
+    .where(where)
+    .orderBy(desc(conversations.endedAt))
+    .limit(limit)
+    .all() as ConversationRecord[];
 }
 
 /**

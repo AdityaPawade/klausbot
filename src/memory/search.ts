@@ -124,9 +124,9 @@ export interface ConversationSearchResult {
  */
 export function searchConversations(
   query: string,
-  options: { topK?: number; daysBack?: number } = {},
+  options: { topK?: number; daysBack?: number; chatId?: number } = {},
 ): ConversationSearchResult[] {
-  const { topK = 5, daysBack } = options;
+  const { topK = 5, daysBack, chatId } = options;
   const db = getDb();
 
   // Escape FTS5 special characters and format query
@@ -142,44 +142,37 @@ export function searchConversations(
     return [];
   }
 
-  // Build SQL with FTS5 search and optional date filter
-  let sql: string;
-  const params: (string | number)[] = [ftsQuery, topK];
+  // Build SQL with FTS5 search and optional date/chat filters
+  const conditions = ["conversations_fts MATCH ?"];
+  const params: (string | number)[] = [ftsQuery];
 
   if (daysBack) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - daysBack);
-
-    sql = `
-      SELECT
-        c.session_id,
-        c.summary,
-        c.ended_at,
-        c.message_count,
-        bm25(conversations_fts) as rank
-      FROM conversations_fts fts
-      INNER JOIN conversations c ON c.id = fts.rowid
-      WHERE conversations_fts MATCH ?
-        AND c.ended_at >= ?
-      ORDER BY rank
-      LIMIT ?
-    `;
-    params.splice(1, 0, cutoff.toISOString()); // Insert cutoff between query and limit
-  } else {
-    sql = `
-      SELECT
-        c.session_id,
-        c.summary,
-        c.ended_at,
-        c.message_count,
-        bm25(conversations_fts) as rank
-      FROM conversations_fts fts
-      INNER JOIN conversations c ON c.id = fts.rowid
-      WHERE conversations_fts MATCH ?
-      ORDER BY rank
-      LIMIT ?
-    `;
+    conditions.push("c.ended_at >= ?");
+    params.push(cutoff.toISOString());
   }
+
+  if (chatId !== undefined) {
+    conditions.push("c.chat_id = ?");
+    params.push(chatId);
+  }
+
+  params.push(topK);
+
+  const sql = `
+    SELECT
+      c.session_id,
+      c.summary,
+      c.ended_at,
+      c.message_count,
+      bm25(conversations_fts) as rank
+    FROM conversations_fts fts
+    INNER JOIN conversations c ON c.id = fts.rowid
+    WHERE ${conditions.join(" AND ")}
+    ORDER BY rank
+    LIMIT ?
+  `;
 
   try {
     const rows = db.prepare(sql).all(...params) as Array<{

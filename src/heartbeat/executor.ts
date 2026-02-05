@@ -119,7 +119,10 @@ export async function executeHeartbeat(): Promise<HeartbeatResult> {
     }
 
     // Non-OK response - send to all approved users
-    log.info({ responseLength: result.length }, "Heartbeat has items to report");
+    log.info(
+      { responseLength: result.length },
+      "Heartbeat has items to report",
+    );
 
     // Get bot instance dynamically (avoid circular import)
     const { bot } = await import("../telegram/index.js");
@@ -142,7 +145,10 @@ export async function executeHeartbeat(): Promise<HeartbeatResult> {
         await bot.api.sendMessage(user.chatId, message, { parse_mode: "HTML" });
         log.debug({ chatId: user.chatId }, "Sent heartbeat to user");
       } catch (err) {
-        log.error({ err, chatId: user.chatId }, "Failed to send heartbeat to user");
+        log.error(
+          { err, chatId: user.chatId },
+          "Failed to send heartbeat to user",
+        );
       }
     }
 
@@ -161,7 +167,7 @@ export async function executeHeartbeat(): Promise<HeartbeatResult> {
         try {
           await bot.api.sendMessage(
             user.chatId,
-            `Heartbeat check failed: ${errorMsg}`
+            `Heartbeat check failed: ${errorMsg}`,
           );
         } catch {
           // Ignore send errors

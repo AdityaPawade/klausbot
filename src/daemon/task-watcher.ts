@@ -123,7 +123,10 @@ async function processCompletedTask(
     return true;
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logger.error({ filename, err: errorMsg }, "Failed to process completed task");
+    logger.error(
+      { filename, err: errorMsg },
+      "Failed to process completed task",
+    );
 
     // Move to notified with error suffix to avoid infinite retry
     try {
@@ -148,7 +151,9 @@ async function pollCompletedTasks(
   let processed = 0;
 
   try {
-    const files = fs.readdirSync(COMPLETED_DIR).filter((f) => f.endsWith(".json"));
+    const files = fs
+      .readdirSync(COMPLETED_DIR)
+      .filter((f) => f.endsWith(".json"));
 
     for (const file of files) {
       const filePath = path.join(COMPLETED_DIR, file);

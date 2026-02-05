@@ -7,7 +7,12 @@ export { MessageQueue } from "./queue.js";
 export type { QueuedMessage, QueueStats, MessageStatus } from "./queue.js";
 
 // Re-export spawner types and function
-export { queryClaudeCode } from "./spawner.js";
+export {
+  queryClaudeCode,
+  getMcpConfig,
+  getHooksConfig,
+  writeMcpConfigFile,
+} from "./spawner.js";
 export type { ClaudeResponse, SpawnerOptions } from "./spawner.js";
 
 // Re-export transcript recovery for external use

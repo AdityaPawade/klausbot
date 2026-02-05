@@ -31,10 +31,18 @@ import {
   runMigrations,
   getOrchestrationInstructions,
 } from "../memory/index.js";
-import { needsBootstrap, DEFAULT_BOOTSTRAP_CONTENT } from "../bootstrap/index.js";
+import {
+  needsBootstrap,
+  DEFAULT_BOOTSTRAP_CONTENT,
+} from "../bootstrap/index.js";
 import { validateRequiredCapabilities } from "../platform/index.js";
 import { startScheduler, stopScheduler, loadCronStore } from "../cron/index.js";
-import { startHeartbeat, stopHeartbeat, shouldCollectNote, getNoteCollectionInstructions } from "../heartbeat/index.js";
+import {
+  startHeartbeat,
+  stopHeartbeat,
+  shouldCollectNote,
+  getNoteCollectionInstructions,
+} from "../heartbeat/index.js";
 import { startTaskWatcher } from "./task-watcher.js";
 import {
   MediaAttachment,
@@ -487,7 +495,34 @@ export async function startGateway(): Promise<void> {
     const chatId = ctx.chat?.id;
     if (!chatId) return;
 
-    const messageType = Object.keys(ctx.message ?? {}).find(
+    const msg = ctx.message ?? {};
+    const messageKeys = Object.keys(msg);
+
+    // Silently ignore service messages (topic created/edited/closed, pinned, etc.)
+    const serviceKeys = [
+      "forum_topic_created",
+      "forum_topic_edited",
+      "forum_topic_closed",
+      "forum_topic_reopened",
+      "general_forum_topic_hidden",
+      "general_forum_topic_unhidden",
+      "pinned_message",
+      "new_chat_members",
+      "left_chat_member",
+      "new_chat_title",
+      "new_chat_photo",
+      "delete_chat_photo",
+      "group_chat_created",
+      "supergroup_chat_created",
+      "channel_chat_created",
+      "migrate_to_chat_id",
+      "migrate_from_chat_id",
+      "message_auto_delete_timer_changed",
+      "is_topic_message",
+    ];
+    if (messageKeys.some((key) => serviceKeys.includes(key))) return;
+
+    const messageType = messageKeys.find(
       (key) =>
         ![
           "message_id",
@@ -499,6 +534,9 @@ export async function startGateway(): Promise<void> {
           "photo",
           "caption",
           "entities",
+          "message_thread_id",
+          "is_topic_message",
+          "reply_to_message",
         ].includes(key),
     );
 
@@ -567,6 +605,33 @@ export async function stopGateway(): Promise<void> {
   }
 
   log.info("Gateway stopped");
+}
+
+/**
+ * Retry once when Claude returns empty text (file-only operations).
+ * Uses batch mode with a short nudge prompt — no tools, no subagents.
+ */
+async function retryForText(
+  originalPrompt: string,
+  additionalInstructions: string,
+  model?: string,
+): Promise<string | null> {
+  log.warn("Empty response, retrying with text nudge");
+  try {
+    const nudge = `You just processed this message but only updated files without responding. The user is waiting for a reply. Respond naturally to: "${originalPrompt}"`;
+    const retry = await queryClaudeCode(nudge, {
+      additionalInstructions,
+      model,
+      timeout: 30000,
+    });
+    if (retry.result) {
+      log.info({ resultLength: retry.result.length }, "Retry produced text");
+      return retry.result;
+    }
+  } catch (err) {
+    log.error({ err }, "Retry failed");
+  }
+  return null;
 }
 
 /**
@@ -643,17 +708,16 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
     // Check if bootstrap needed (BOOTSTRAP.md exists)
     const isBootstrap = needsBootstrap();
     if (isBootstrap) {
-      log.info(
-        { chatId: msg.chatId },
-        "Bootstrap mode: BOOTSTRAP.md present",
-      );
+      log.info({ chatId: msg.chatId }, "Bootstrap mode: BOOTSTRAP.md present");
     }
 
     // Build additional instructions (skip everything during bootstrap — BOOTSTRAP.md is the system prompt)
     let additionalInstructions = "";
     const jsonConfig = getJsonConfig();
-    const subagentsEnabled = !isBootstrap && (jsonConfig.subagents?.enabled ?? true);
-    const subagentsPrefix = jsonConfig.subagents?.taskListIdPrefix ?? "klausbot";
+    const subagentsEnabled =
+      !isBootstrap && (jsonConfig.subagents?.enabled ?? true);
+    const subagentsPrefix =
+      jsonConfig.subagents?.taskListIdPrefix ?? "klausbot";
     let taskListId: string | undefined;
 
     if (!isBootstrap) {
@@ -666,7 +730,8 @@ Use this chatId when creating cron jobs or background tasks.
       // Heartbeat note collection
       let noteInstructions = "";
       if (shouldCollectNote(effectiveText)) {
-        noteInstructions = "\n\n" + getNoteCollectionInstructions(effectiveText);
+        noteInstructions =
+          "\n\n" + getNoteCollectionInstructions(effectiveText);
         log.info({ chatId: msg.chatId }, "Heartbeat note collection triggered");
       }
 
@@ -680,13 +745,15 @@ Use this chatId when creating cron jobs or background tasks.
         orchestrationInstructions = "\n\n" + getOrchestrationInstructions();
       }
 
-      additionalInstructions = chatIdContext + noteInstructions + orchestrationInstructions;
+      additionalInstructions =
+        chatIdContext + noteInstructions + orchestrationInstructions;
     }
 
     // Check streaming
     const streamingEnabled =
       !isBootstrap && (jsonConfig.streaming?.enabled ?? true);
-    const canStream = streamingEnabled && (await canStreamToChat(bot, msg.chatId));
+    const canStream =
+      streamingEnabled && (await canStreamToChat(bot, msg.chatId));
 
     if (canStream) {
       // === STREAMING PATH ===
@@ -709,6 +776,7 @@ Use this chatId when creating cron jobs or background tasks.
             messageThreadId: msg.threading?.messageThreadId,
             enableSubagents: subagentsEnabled,
             taskListId,
+            chatId: msg.chatId,
           },
         );
 
@@ -722,12 +790,22 @@ Use this chatId when creating cron jobs or background tasks.
         if (streamResult.result) {
           await splitAndSend(msg.chatId, streamResult.result, msg.threading);
         } else {
-          await bot.api.sendMessage(msg.chatId, "[Empty response]", {
-            message_thread_id: msg.threading?.messageThreadId,
-            reply_parameters: msg.threading?.replyToMessageId
-              ? { message_id: msg.threading.replyToMessageId }
-              : undefined,
-          });
+          // Empty response — retry via batch with explicit nudge
+          const retryResult = await retryForText(
+            effectiveText,
+            additionalInstructions,
+            jsonConfig.model,
+          );
+          if (retryResult) {
+            await splitAndSend(msg.chatId, retryResult, msg.threading);
+          } else {
+            await bot.api.sendMessage(msg.chatId, "[Empty response]", {
+              message_thread_id: msg.threading?.messageThreadId,
+              reply_parameters: msg.threading?.replyToMessageId
+                ? { message_id: msg.threading.replyToMessageId }
+                : undefined,
+            });
+          }
         }
 
         // Invalidate identity cache
@@ -778,6 +856,7 @@ Use this chatId when creating cron jobs or background tasks.
       model: jsonConfig.model,
       enableSubagents: subagentsEnabled,
       taskListId,
+      chatId: msg.chatId,
     });
 
     // Stop typing indicator
@@ -804,18 +883,32 @@ Use this chatId when creating cron jobs or background tasks.
       invalidateIdentityCache();
 
       if (response.result) {
-        const messages = await splitAndSend(msg.chatId, response.result, msg.threading);
+        const messages = await splitAndSend(
+          msg.chatId,
+          response.result,
+          msg.threading,
+        );
         log.debug(
           { chatId: msg.chatId, chunks: messages },
           "Sent response chunks",
         );
       } else {
-        await bot.api.sendMessage(msg.chatId, "[Empty response]", {
-          message_thread_id: msg.threading?.messageThreadId,
-          reply_parameters: msg.threading?.replyToMessageId
-            ? { message_id: msg.threading.replyToMessageId }
-            : undefined,
-        });
+        // Empty response — retry with explicit nudge
+        const retryResult = await retryForText(
+          effectiveText,
+          additionalInstructions,
+          jsonConfig.model,
+        );
+        if (retryResult) {
+          await splitAndSend(msg.chatId, retryResult, msg.threading);
+        } else {
+          await bot.api.sendMessage(msg.chatId, "[Empty response]", {
+            message_thread_id: msg.threading?.messageThreadId,
+            reply_parameters: msg.threading?.replyToMessageId
+              ? { message_id: msg.threading.replyToMessageId }
+              : undefined,
+          });
+        }
       }
 
       // Notify user of non-fatal media errors

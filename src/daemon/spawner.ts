@@ -16,7 +16,7 @@ import { handleTimeout } from "./transcript.js";
  *
  * @returns MCP config object for --mcp-config flag
  */
-function getMcpConfig(): object {
+export function getMcpConfig(): object {
   return {
     mcpServers: {
       klausbot: {
@@ -39,7 +39,7 @@ function getMcpConfig(): object {
  *
  * @returns Settings object with hooks configuration
  */
-function getHooksConfig(): object {
+export function getHooksConfig(): object {
   // Build command using same invocation as current process
   // Dev: node dist/index.js → node dist/index.js hook start
   // Prod: node /usr/local/bin/klausbot → node /usr/local/bin/klausbot hook start
@@ -94,7 +94,7 @@ function getHooksConfig(): object {
  *
  * @returns Path to temporary config file
  */
-function writeMcpConfigFile(): string {
+export function writeMcpConfigFile(): string {
   const config = getMcpConfig();
   const configPath = path.join(os.tmpdir(), `klausbot-mcp-${process.pid}.json`);
   writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -127,6 +127,8 @@ export interface SpawnerOptions {
   enableSubagents?: boolean;
   /** Task list ID for multi-session coordination */
   taskListId?: string;
+  /** Telegram chat ID — propagated to hooks/MCP for per-chat memory isolation */
+  chatId?: number;
 }
 
 const DEFAULT_TIMEOUT = 90000; // 90 seconds — main agent is a fast dispatcher
@@ -209,10 +211,13 @@ export async function queryClaudeCode(
 
     logger.debug({ hooksConfig: hooksSettings }, "Hook configuration");
 
-    // Build environment with optional task list ID
+    // Build environment with optional task list ID and chat ID
     const env = { ...process.env };
     if (options.taskListId) {
       env.CLAUDE_CODE_TASK_LIST_ID = options.taskListId;
+    }
+    if (options.chatId !== undefined) {
+      env.KLAUSBOT_CHAT_ID = String(options.chatId);
     }
 
     // CRITICAL: stdin must inherit to avoid hang bug (issue #771)

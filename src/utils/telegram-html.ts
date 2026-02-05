@@ -66,15 +66,9 @@ export function markdownToTelegramHtml(markdown: string): string {
 
   // Step 5: Convert blockquotes (> text → <blockquote>text</blockquote>)
   // Handle multi-line blockquotes
-  result = result.replace(
-    /^&gt;\s*(.+)$/gm,
-    "<blockquote>$1</blockquote>",
-  );
+  result = result.replace(/^&gt;\s*(.+)$/gm, "<blockquote>$1</blockquote>");
   // Merge adjacent blockquotes
-  result = result.replace(
-    /<\/blockquote>\n<blockquote>/g,
-    "\n",
-  );
+  result = result.replace(/<\/blockquote>\n<blockquote>/g, "\n");
 
   // Step 6: Convert bold (**text** → <b>text</b>)
   // Use non-greedy match and handle multiline
@@ -85,13 +79,13 @@ export function markdownToTelegramHtml(markdown: string): string {
   // Only match *text* that's not part of **text**
   result = result.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<i>$1</i>");
   // Match _text_ only at word boundaries
-  result = result.replace(/(?<![a-zA-Z0-9])_([^_]+)_(?![a-zA-Z0-9])/g, "<i>$1</i>");
+  result = result.replace(
+    /(?<![a-zA-Z0-9])_([^_]+)_(?![a-zA-Z0-9])/g,
+    "<i>$1</i>",
+  );
 
   // Step 8: Convert links [text](url) → <a href="url">text</a>
-  result = result.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2">$1</a>',
-  );
+  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
   // Step 9: Restore inline code
   inlineCodes.forEach((code, i) => {

@@ -81,10 +81,13 @@ export async function handleHookStart(): Promise<void> {
   // Get current datetime
   const datetime = new Date().toISOString();
 
-  // Get recent conversation summaries (last 3)
+  // Get recent conversation summaries (last 3, filtered by chat)
+  const chatId = process.env.KLAUSBOT_CHAT_ID
+    ? Number(process.env.KLAUSBOT_CHAT_ID)
+    : undefined;
   let summariesText = "";
   try {
-    const recent = getRecentConversations(3);
+    const recent = getRecentConversations(3, undefined, chatId);
     if (recent.length > 0) {
       summariesText = recent
         .map((c) => {
@@ -179,8 +182,11 @@ export async function handleHookEnd(): Promise<void> {
     const summary = await generateSummary(conversationText);
     hookLog(`[end] Summary generated: ${summary.length} chars`);
 
-    // Store conversation
-    hookLog("[end] Storing conversation...");
+    // Store conversation with chat ID for per-chat memory isolation
+    const chatId = process.env.KLAUSBOT_CHAT_ID
+      ? Number(process.env.KLAUSBOT_CHAT_ID)
+      : undefined;
+    hookLog(`[end] Storing conversation... chatId=${chatId ?? "none"}`);
     storeConversation({
       sessionId: input.session_id,
       startedAt,
@@ -188,7 +194,7 @@ export async function handleHookEnd(): Promise<void> {
       transcript: transcriptContent,
       summary,
       messageCount,
-      // chatId: extracted from session metadata if available
+      chatId,
     });
 
     hookLog(
