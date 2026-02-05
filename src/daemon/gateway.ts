@@ -31,6 +31,7 @@ import {
 import { needsBootstrap, BOOTSTRAP_INSTRUCTIONS } from "../bootstrap/index.js";
 import { validateRequiredCapabilities } from "../platform/index.js";
 import { startScheduler, stopScheduler, loadCronStore } from "../cron/index.js";
+import { startHeartbeat, stopHeartbeat } from "../heartbeat/index.js";
 import {
   MediaAttachment,
   transcribeAudio,
