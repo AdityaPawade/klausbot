@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 
 ## Current Position
 
-Phase: 10 of 14 (Telegram Streaming) — COMPLETE
-Plan: 2/2 complete
-Status: Phase 10 complete, ready for Phase 11
-Last activity: 2026-02-05 — Streaming complete with markdown-to-HTML formatting
+Phase: 11 of 14 (Telegram Threading)
+Plan: 1/1 complete
+Status: Phase 11 complete
+Last activity: 2026-02-05 — Threading support for forum topics and reply linking
 
-Progress: [█████████░] 50% (phases 9, 10, 13 complete; 11, 12, 14 remaining)
+Progress: [██████████░] 55% (phases 9, 10, 11, 13 complete; 12, 14 remaining)
 
 ## Milestone Summary
 
@@ -41,9 +41,9 @@ Progress: [█████████░] 50% (phases 9, 10, 13 complete; 11, 1
 
 **Velocity:**
 
-- Total plans completed: 7 (v1.1)
-- Average duration: 3m 15s
-- Total execution time: 22m 45s
+- Total plans completed: 8 (v1.1)
+- Average duration: 3m 21s
+- Total execution time: 26m 45s
 
 **By Phase:**
 
@@ -51,6 +51,7 @@ Progress: [█████████░] 50% (phases 9, 10, 13 complete; 11, 1
 | ---------------------- | ----- | ------- | -------- |
 | 09-platform-foundation | 3/3   | 11m 14s | 3m 45s   |
 | 10-telegram-streaming  | 2/2   | 7m 29s  | 3m 45s   |
+| 11-telegram-threading  | 1/1   | 4m 00s  | 4m 00s   |
 | 13-docker-release      | 2/2   | 4m 02s  | 2m 01s   |
 
 _Updated after each plan completion_
@@ -90,6 +91,8 @@ _Updated after each plan completion_
 - Timeout: 5 minute streaming timeout matches batch spawner, returns partial on timeout
 - Markdown to HTML: Convert Claude markdown to Telegram HTML for proper code blocks, bold, italic rendering
 - Drafts show raw markdown during streaming (preview), final message is formatted HTML
+- Threading: First chunk replies to user message; subsequent chunks in-thread only
+- Threading: Optional chaining for ctx.msg access (TypeScript null safety)
 
 ### Pending Todos
 
@@ -102,16 +105,15 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Phase 10 complete with markdown formatting
+Stopped at: Completed 11-01-PLAN.md (Threading Support)
 Resume file: None
 
 ## Next Steps
 
-1. `/gsd:plan-phase 11` — Plan Telegram threading
-2. Or `/gsd:plan-phase 12` — Plan heartbeat system
-3. Or `/gsd:plan-phase 14` — Plan testing framework
+1. `/gsd:plan-phase 12` — Plan heartbeat system
+2. Or `/gsd:plan-phase 14` — Plan testing framework
 
 ---
 
-_State updated: 2026-02-05 (Phase 10 complete)_
+_State updated: 2026-02-05 (Phase 11 complete)_
 _v1.1 in progress_
