@@ -62,6 +62,11 @@ cp .env.example .env
 docker compose up -d
 ```
 
+To approve pairing requests:
+```bash
+docker compose exec klausbot node dist/index.js pairing approve XXXXXX
+```
+
 ### Pairing Your Telegram Account
 
 1. Find your bot on Telegram (the username you created with @BotFather)
