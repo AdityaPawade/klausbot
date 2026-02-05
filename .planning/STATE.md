@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 ## Current Position
 
 Phase: 12 of 14 (Heartbeat System)
-Plan: 1/2 complete
-Status: In progress
-Last activity: 2026-02-05 — Heartbeat core infrastructure (config, scheduler, executor)
+Plan: 2/2 complete
+Status: Phase complete
+Last activity: 2026-02-05 — Gateway integration for heartbeat
 
-Progress: [███████████░] 60% (phases 9, 10, 11, 13 complete; 12 in progress, 14 remaining)
+Progress: [████████████░] 65% (phases 9, 10, 11, 12, 13 complete; 14 remaining)
 
 ## Milestone Summary
 
@@ -41,9 +41,9 @@ Progress: [███████████░] 60% (phases 9, 10, 11, 13 compl
 
 **Velocity:**
 
-- Total plans completed: 9 (v1.1)
-- Average duration: 3m 23s
-- Total execution time: 30m 30s
+- Total plans completed: 10 (v1.1)
+- Average duration: 3m 12s
+- Total execution time: 32m 00s
 
 **By Phase:**
 
@@ -53,7 +53,7 @@ Progress: [███████████░] 60% (phases 9, 10, 11, 13 compl
 | 10-telegram-streaming  | 2/2   | 7m 29s  | 3m 45s   |
 | 11-telegram-threading  | 1/1   | 4m 00s  | 4m 00s   |
 | 13-docker-release      | 2/2   | 4m 02s  | 2m 01s   |
-| 12-heartbeat-system    | 1/2   | 3m 45s  | 3m 45s   |
+| 12-heartbeat-system    | 2/2   | 5m 15s  | 2m 38s   |
 
 _Updated after each plan completion_
 
@@ -97,6 +97,7 @@ _Updated after each plan completion_
 - Heartbeat: No immediate tick on startup (waits for first interval)
 - Heartbeat: HEARTBEAT_OK exact match suppresses notification
 - Heartbeat: Hot reload via config re-check on each tick
+- Heartbeat: Gateway integration keeps cron and heartbeat schedulers together in lifecycle
 
 ### Pending Todos
 
@@ -109,15 +110,14 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 12-01-PLAN.md (Heartbeat Core)
+Stopped at: Completed 12-02-PLAN.md (Gateway Integration)
 Resume file: None
 
 ## Next Steps
 
-1. `/gsd:execute-plan 12-02` — Gateway integration for heartbeat
-2. Or `/gsd:plan-phase 14` — Plan testing framework
+1. `/gsd:plan-phase 14` — Plan testing framework (final phase)
 
 ---
 
-_State updated: 2026-02-05 (Phase 12 plan 01 complete)_
+_State updated: 2026-02-05 (Phase 12 complete)_
 _v1.1 in progress_
