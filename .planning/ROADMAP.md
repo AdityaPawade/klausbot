@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** - Phases 1-8 (shipped 2026-01-31)
-- 🚧 **v1.1 Production Ready** - Phases 9-17 (in progress, was 9-18 before Phase 13 removed)
+- 🚧 **v1.1 Production Ready** - Phases 9-14 (in progress)
 
 ## Phases
 
@@ -45,56 +45,7 @@ Plans:
 - [x] 09-02-PLAN.md - Environment capability detection (Wave 2)
 - [x] 09-03-PLAN.md - Graceful degradation framework (Wave 2)
 
-#### Phase 10: Doctor Command
-**Goal**: Users can diagnose setup issues before running the bot
-**Depends on**: Phase 9
-**Requirements**: DOCT-01, DOCT-02, DOCT-03, DOCT-04, DOCT-05, DOCT-06, DOCT-07, DOCT-08
-**Success Criteria** (what must be TRUE):
-  1. User runs `klausbot doctor` and sees pass/fail for all prerequisites
-  2. Each failed check includes a remediation hint (what to do)
-  3. Doctor checks: env vars, Node version, disk space, network, Telegram token, Claude Code
-  4. Output is clearly formatted with visual pass/fail indicators
-**Plans**: TBD
-
-Plans:
-- [ ] 10-01: Doctor command framework
-- [ ] 10-02: Individual health checks
-
-#### Phase 11: Setup & Onboarding
-**Goal**: First-time users can configure klausbot through a guided wizard
-**Depends on**: Phase 10
-**Requirements**: SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05
-**Success Criteria** (what must be TRUE):
-  1. User runs `klausbot onboard` and completes interactive setup wizard
-  2. Wizard creates JSON config file with selected model and preferences
-  3. Pairing code is stored encrypted in SQLite (not plaintext in config)
-  4. Gateway refuses to start if setup incomplete, showing clear error message
-  5. Setup never prompts for secrets (reads from env vars per 12-factor)
-**Plans**: TBD
-
-Plans:
-- [ ] 11-01: Onboard wizard command
-- [ ] 11-02: Config file management
-- [ ] 11-03: Encrypted pairing storage
-
-#### Phase 12: Service Management
-**Goal**: Users can install klausbot as a system service that starts automatically
-**Depends on**: Phase 11
-**Requirements**: SERV-01, SERV-02, SERV-03, SERV-04, SERV-05
-**Success Criteria** (what must be TRUE):
-  1. User runs `klausbot service install` and daemon is registered with OS
-  2. User runs `klausbot service uninstall` and daemon is removed
-  3. User runs `klausbot service status` and sees daemon state
-  4. On macOS: plist installed to ~/Library/LaunchAgents
-  5. On Linux/WSL2: systemd user unit installed
-**Plans**: TBD
-
-Plans:
-- [ ] 12-01: Service management CLI
-- [ ] 12-02: launchd support (macOS)
-- [ ] 12-03: systemd support (Linux)
-
-#### Phase 13: Telegram Streaming
+#### Phase 10: Telegram Streaming
 **Goal**: Users see real-time response generation in Telegram
 **Depends on**: Phase 9 (platform foundation)
 **Requirements**: STRM-01, STRM-02, STRM-03, STRM-04
@@ -106,12 +57,12 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 13-01: Telegram draft streaming
-- [ ] 13-02: Throttling and finalization
+- [ ] 10-01: Telegram draft streaming
+- [ ] 10-02: Throttling and finalization
 
-#### Phase 14: Telegram Threading
+#### Phase 11: Telegram Threading
 **Goal**: Conversations stay organized in threads
-**Depends on**: Phase 13
+**Depends on**: Phase 10
 **Requirements**: TELE-01, TELE-02
 **Success Criteria** (what must be TRUE):
   1. Bot respects message_thread_id for threaded conversations
@@ -119,9 +70,9 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 14-01: Thread support implementation
+- [ ] 11-01: Thread support implementation
 
-#### Phase 15: Heartbeat System
+#### Phase 12: Heartbeat System
 **Goal**: klausbot periodically checks in and can be reminded of things
 **Depends on**: Phase 9 (platform foundation)
 **Requirements**: HRTB-01, HRTB-02, HRTB-03, HRTB-04, HRTB-05, HRTB-06
@@ -134,29 +85,29 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 15-01: HEARTBEAT.md file support
-- [ ] 15-02: Periodic heartbeat scheduler
-- [ ] 15-03: User note saving
+- [ ] 12-01: HEARTBEAT.md file support
+- [ ] 12-02: Periodic heartbeat scheduler
+- [ ] 12-03: User note saving
 
-#### Phase 16: Docker & Release
-**Goal**: klausbot is documented for easy deployment (Docker marked "Coming Soon")
-**Depends on**: Phase 15 (all features implemented)
+#### Phase 13: Docker & Release
+**Goal**: klausbot is documented for easy deployment
+**Depends on**: Phase 12 (all features implemented)
 **Requirements**: PLAT-04, RLSE-01, RLSE-02, RLSE-03, RLSE-04, RLSE-05
 **Success Criteria** (what must be TRUE):
   1. README includes step-by-step installation guide
   2. README includes "Why I built it" section
   3. All commands are documented
   4. Configuration reference and troubleshooting guide exist
-  5. Docker section says "Coming Soon" (deferred per user decision)
+  5. Dockerfile installs Claude Code CLI
 **Plans**: 2 plans
 
 Plans:
-- [x] 16-01-PLAN.md — Documentation files (LICENSE, .env.example, README.md)
-- [x] 16-02-PLAN.md — User review checkpoint (fill story, add screenshots)
+- [x] 13-01-PLAN.md — Documentation files (LICENSE, .env.example, README.md)
+- [x] 13-02-PLAN.md — User review checkpoint (fill story, add screenshots)
 
-#### Phase 17: Testing Framework
+#### Phase 14: Testing Framework
 **Goal**: Comprehensive tests ensure "tests pass = app works" confidence
-**Depends on**: Phase 16 (all features and docs complete)
+**Depends on**: Phase 13 (all features and docs complete)
 **Requirements**: TEST-01, TEST-02, TEST-03, TEST-04
 **Success Criteria** (what must be TRUE):
   1. Unit tests exist for core modules (gateway, spawner, memory, cron)
@@ -166,28 +117,25 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 17-01: Test infrastructure setup
-- [ ] 17-02: Unit test suite
-- [ ] 17-03: E2E test suite
-- [ ] 17-04: CI/CD integration
+- [ ] 14-01: Test infrastructure setup
+- [ ] 14-02: Unit test suite
+- [ ] 14-03: E2E test suite
+- [ ] 14-04: CI/CD integration
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17
+Phases execute in numeric order: 9 → 10 → 11 → 12 → 13 → 14
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 9. Platform Foundation | v1.1 | 3/3 | ✓ Complete | 2026-01-31 |
-| 10. Doctor Command | v1.1 | 0/2 | Not started | - |
-| 11. Setup & Onboarding | v1.1 | 0/3 | Not started | - |
-| 12. Service Management | v1.1 | 0/3 | Not started | - |
-| 13. Telegram Streaming | v1.1 | 0/2 | Not started | - |
-| 14. Telegram Threading | v1.1 | 0/1 | Not started | - |
-| 15. Heartbeat System | v1.1 | 0/3 | Not started | - |
-| 16. Docker & Release | v1.1 | 2/2 | ✓ Complete | 2026-02-05 |
-| 17. Testing Framework | v1.1 | 0/4 | Not started | - |
+| 10. Telegram Streaming | v1.1 | 0/2 | Not started | - |
+| 11. Telegram Threading | v1.1 | 0/1 | Not started | - |
+| 12. Heartbeat System | v1.1 | 0/3 | Not started | - |
+| 13. Docker & Release | v1.1 | 2/2 | ✓ Complete | 2026-02-05 |
+| 14. Testing Framework | v1.1 | 0/4 | Not started | - |
 
 ---
 *Roadmap created: 2026-01-31*
-*v1.1 milestone: 9 phases, 23 plans (after Phase 13 removal)*
+*v1.1 milestone: 6 phases, 15 plans (after removing Doctor/Setup/Service phases)*
