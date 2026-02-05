@@ -102,7 +102,7 @@ Environment Variables:
   LOG_LEVEL             Log level (default: info)
 `);
 
-// daemon command (also default when called explicitly)
+// daemon command - starts the gateway (auto-creates ~/.klausbot on startup)
 program
   .command('daemon')
   .alias('gateway')
@@ -112,114 +112,69 @@ program
     await startGateway();
   });
 
-// init command
-program
-  .command('init')
-  .description('Initialize or reset ~/.klausbot/ directory')
-  .option('-f, --force', 'Skip confirmation prompt')
-  .action(async (options: { force?: boolean }) => {
-    const { existsSync, rmSync } = await import('fs');
-    const { join } = await import('path');
-    const { confirm } = await import('@inquirer/prompts');
-    const { createChildLogger } = await import('./utils/logger.js');
-    const { initializeHome, initializeIdentity, KLAUSBOT_HOME } = await import('./memory/index.js');
-
-    const alreadyExists = existsSync(KLAUSBOT_HOME);
-
-    // Prompt for confirmation (unless --force)
-    if (!options.force) {
-      if (alreadyExists) {
-        theme.blank();
-        theme.warn(`${KLAUSBOT_HOME} already exists.`);
-        theme.info('This will reset identity and conversations.');
-        theme.info('Config will be preserved.');
-        theme.blank();
-      }
-
-      const confirmed = await confirm({
-        message: alreadyExists ? 'Continue with reset?' : `Initialize klausbot at ${KLAUSBOT_HOME}?`,
-        default: !alreadyExists, // Default yes for fresh, no for reset
-      });
-
-      if (!confirmed) {
-        theme.info('Aborted.');
-        process.exit(0);
-      }
-    }
-
-    const log = createChildLogger('init');
-    theme.blank();
-    theme.info(`Initializing klausbot data home at ${KLAUSBOT_HOME}...`);
-
-    // Clear database if it exists (conversations, embeddings)
-    const dbPath = join(KLAUSBOT_HOME, 'klausbot.db');
-    const dbWalPath = join(KLAUSBOT_HOME, 'klausbot.db-wal');
-    const dbShmPath = join(KLAUSBOT_HOME, 'klausbot.db-shm');
-    if (existsSync(dbPath)) {
-      rmSync(dbPath, { force: true });
-      if (existsSync(dbWalPath)) rmSync(dbWalPath, { force: true });
-      if (existsSync(dbShmPath)) rmSync(dbShmPath, { force: true });
-      log.info({ path: dbPath }, 'Cleared database');
-    }
-
-    initializeHome(log);
-    initializeIdentity(log);
-
-    theme.success('Done!');
-    theme.list([
-      '~/.klausbot/config/ (preserved)',
-      '~/.klausbot/klausbot.db (cleared)',
-      '~/.klausbot/identity/ (reset)',
-    ], { indent: 2 });
-  });
-
-// Service management commands (commented out for local dev)
-// TODO: Uncomment when publishing as npm package
-//
+// init command (commented out - daemon auto-creates ~/.klausbot)
 // program
-//   .command('setup')
-//   .description('First-time setup wizard')
-//   .action(async () => {
-//     const { runSetupWizard } = await import('./cli/install.js');
-//     await runSetupWizard();
-//   });
-//
-// program
-//   .command('uninstall')
-//   .description('Remove background service')
-//   .action(async () => {
-//     const { runUninstall } = await import('./cli/install.js');
-//     await runUninstall();
-//   });
-//
-// program
-//   .command('status')
-//   .description('Check klausbot status')
-//   .action(async () => {
-//     const { runStatus } = await import('./cli/install.js');
-//     await runStatus();
-//   });
-//
-// program
-//   .command('restart')
-//   .description('Restart background service')
-//   .action(async () => {
-//     const { runRestart } = await import('./cli/install.js');
-//     await runRestart();
+//   .command('init')
+//   .description('Initialize or reset ~/.klausbot/ directory')
+//   .option('-f, --force', 'Skip confirmation prompt')
+//   .action(async (options: { force?: boolean }) => {
+//     const { existsSync, rmSync } = await import('fs');
+//     const { join } = await import('path');
+//     const { confirm } = await import('@inquirer/prompts');
+//     const { createChildLogger } = await import('./utils/logger.js');
+//     const { initializeHome, initializeIdentity, KLAUSBOT_HOME } = await import('./memory/index.js');
+//     const alreadyExists = existsSync(KLAUSBOT_HOME);
+//     if (!options.force) {
+//       if (alreadyExists) {
+//         theme.blank();
+//         theme.warn(`${KLAUSBOT_HOME} already exists.`);
+//         theme.info('This will reset identity and conversations.');
+//         theme.info('Config will be preserved.');
+//         theme.blank();
+//       }
+//       const confirmed = await confirm({
+//         message: alreadyExists ? 'Continue with reset?' : `Initialize klausbot at ${KLAUSBOT_HOME}?`,
+//         default: !alreadyExists,
+//       });
+//       if (!confirmed) {
+//         theme.info('Aborted.');
+//         process.exit(0);
+//       }
+//     }
+//     const log = createChildLogger('init');
+//     theme.blank();
+//     theme.info(`Initializing klausbot data home at ${KLAUSBOT_HOME}...`);
+//     const dbPath = join(KLAUSBOT_HOME, 'klausbot.db');
+//     const dbWalPath = join(KLAUSBOT_HOME, 'klausbot.db-wal');
+//     const dbShmPath = join(KLAUSBOT_HOME, 'klausbot.db-shm');
+//     if (existsSync(dbPath)) {
+//       rmSync(dbPath, { force: true });
+//       if (existsSync(dbWalPath)) rmSync(dbWalPath, { force: true });
+//       if (existsSync(dbShmPath)) rmSync(dbShmPath, { force: true });
+//       log.info({ path: dbPath }, 'Cleared database');
+//     }
+//     initializeHome(log);
+//     initializeIdentity(log);
+//     theme.success('Done!');
+//     theme.list([
+//       '~/.klausbot/config/ (preserved)',
+//       '~/.klausbot/klausbot.db (cleared)',
+//       '~/.klausbot/identity/ (reset)',
+//     ], { indent: 2 });
 //   });
 
-// cron command
-program
-  .command('cron')
-  .description('Manage scheduled jobs')
-  .argument('[action]', 'Action: list, enable, disable, delete')
-  .argument('[id]', 'Job ID')
-  .action(async (action?: string, id?: string) => {
-    silenceLogs();
-    const { runCronCLI } = await import('./cli/index.js');
-    const args = [action, id].filter(Boolean) as string[];
-    await runCronCLI(args);
-  });
+// cron command (commented out - manage via Telegram/MCP instead)
+// program
+//   .command('cron')
+//   .description('Manage scheduled jobs')
+//   .argument('[action]', 'Action: list, enable, disable, delete')
+//   .argument('[id]', 'Job ID')
+//   .action(async (action?: string, id?: string) => {
+//     silenceLogs();
+//     const { runCronCLI } = await import('./cli/index.js');
+//     const args = [action, id].filter(Boolean) as string[];
+//     await runCronCLI(args);
+//   });
 
 // mcp command (internal, for Claude CLI integration)
 program
@@ -380,19 +335,18 @@ pairing
     }
   });
 
-// config command with subcommands
-const configCmd = program
-  .command('config')
-  .description('Configuration management');
-
-configCmd
-  .command('validate')
-  .description('Validate environment and config file')
-  .action(async () => {
-    silenceLogs();
-    const { runConfigValidate } = await import('./cli/config.js');
-    runConfigValidate();
-  });
+// config command (commented out - not essential)
+// const configCmd = program
+//   .command('config')
+//   .description('Configuration management');
+// configCmd
+//   .command('validate')
+//   .description('Validate environment and config file')
+//   .action(async () => {
+//     silenceLogs();
+//     const { runConfigValidate } = await import('./cli/config.js');
+//     runConfigValidate();
+//   });
 
 // Parse and execute
 // If no command provided, show help
