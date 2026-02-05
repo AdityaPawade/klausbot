@@ -1,9 +1,13 @@
 import { spawn } from "child_process";
 import { createInterface } from "readline";
+import { Bot } from "grammy";
 import { createChildLogger } from "../utils/index.js";
 import { KLAUSBOT_HOME, buildSystemPrompt } from "../memory/index.js";
 
 const log = createChildLogger("streaming");
+
+/** Default timeout for streaming (5 minutes, matches batch spawner) */
+const DEFAULT_TIMEOUT = 300000;
 
 /** Streaming configuration matching jsonConfigSchema */
 export interface StreamConfig {
@@ -145,4 +149,105 @@ export async function streamClaudeResponse(
       log.warn({ stderr: data.toString().slice(0, 200) }, "Stream stderr");
     });
   });
+}
+
+/**
+ * Check if chat supports draft streaming.
+ * Requires private chat with forum topics enabled (BotFather "Threaded Mode").
+ */
+export async function canStreamToChat(
+  bot: Bot,
+  chatId: number,
+): Promise<boolean> {
+  try {
+    const chat = await bot.api.getChat(chatId);
+    // Draft streaming requires private chat with topics enabled
+    return chat.type === "private" && Boolean(chat.has_topics_enabled);
+  } catch {
+    return false;
+  }
+}
+
+/** Draft ID counter for unique draft identification */
+let draftIdCounter = 0;
+
+/** Options for streaming to Telegram */
+export interface StreamToTelegramOptions {
+  model?: string;
+  additionalInstructions?: string;
+  messageThreadId?: number;
+}
+
+/**
+ * Stream Claude response to Telegram via draft updates.
+ * Shows user real-time response generation in a draft bubble.
+ *
+ * @param bot - grammY Bot instance
+ * @param chatId - Telegram chat ID
+ * @param prompt - User message to send to Claude
+ * @param config - Streaming configuration (throttleMs)
+ * @param options - Optional model, instructions, thread ID
+ * @returns Final result text and cost
+ */
+export async function streamToTelegram(
+  bot: Bot,
+  chatId: number,
+  prompt: string,
+  config: StreamConfig,
+  options?: StreamToTelegramOptions,
+): Promise<{ result: string; cost_usd: number }> {
+  const draftId = ++draftIdCounter;
+  const controller = new AbortController();
+
+  let accumulated = "";
+  let lastUpdateTime = 0;
+
+  // Callback for each text chunk - sends throttled draft updates
+  const onChunk = async (text: string): Promise<void> => {
+    accumulated += text;
+
+    const now = Date.now();
+    if (now - lastUpdateTime >= config.throttleMs) {
+      try {
+        await bot.api.sendMessageDraft(chatId, draftId, accumulated, {
+          message_thread_id: options?.messageThreadId,
+        });
+        lastUpdateTime = now;
+      } catch (err) {
+        log.warn({ err, chatId }, "Draft update failed, continuing");
+      }
+    }
+  };
+
+  try {
+    // Call streamClaudeResponse with callback
+    const result = await streamClaudeResponse(
+      prompt,
+      {
+        model: options?.model,
+        additionalInstructions: options?.additionalInstructions,
+        signal: controller.signal,
+      },
+      onChunk,
+    );
+
+    // Send final draft update (ensures latest content shown)
+    await bot.api
+      .sendMessageDraft(chatId, draftId, result.result, {
+        message_thread_id: options?.messageThreadId,
+      })
+      .catch(() => {});
+
+    return result;
+  } catch (err) {
+    controller.abort();
+
+    // On error, still try to return accumulated partial result
+    if (accumulated.length > 0) {
+      log.error({ err, chatId }, "Stream error, returning partial result");
+      return { result: accumulated, cost_usd: 0 };
+    }
+
+    throw err;
+  }
 }

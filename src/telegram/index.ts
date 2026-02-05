@@ -8,7 +8,10 @@ export {
 } from "./skills.js";
 export {
   streamClaudeResponse,
+  streamToTelegram,
+  canStreamToChat,
   type StreamConfig,
   type StreamOptions,
   type StreamResult,
+  type StreamToTelegramOptions,
 } from "./streaming.js";
