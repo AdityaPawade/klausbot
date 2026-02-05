@@ -138,6 +138,22 @@ Plans:
 
 - [x] Direct execution — added apt packages, uv, pnpm to Dockerfile
 
+#### Phase 13.2: Subagent Orchestration (INSERTED)
+
+**Goal**: Claude can spawn and coordinate background Claude agents for parallel work
+**Depends on**: Phase 13.1 (Dockerfile Dependencies)
+**Success Criteria** (what must be TRUE):
+
+1. Claude can spawn background Claude processes for delegated work
+2. Agent-to-agent communication channel exists
+3. Context sharing mechanism between parent and child agents
+4. Parent agent can track and collect results from child agents
+   **Plans**: 1 plan
+
+Plans:
+
+- [ ] 13.2-01-PLAN.md — Enable Task tool in spawner, orchestration instructions, config integration
+
 #### Phase 14: Testing Framework
 
 **Goal**: Comprehensive tests ensure "tests pass = app works" confidence
@@ -161,7 +177,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 13.1 -> 14
+Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 13.1 -> 13.2 -> 14
 
 | Phase                  | Milestone | Plans Complete | Status      | Completed  |
 | ---------------------- | --------- | -------------- | ----------- | ---------- |
@@ -171,9 +187,10 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 13.1 -> 14
 | 12. Heartbeat System   | v1.1      | 3/3            | Complete    | 2026-02-05 |
 | 13. Docker & Release   | v1.1      | 2/2            | Complete    | 2026-02-05 |
 | 13.1 Dockerfile Deps   | v1.1      | 1/1            | Complete    | 2026-02-05 |
+| 13.2 Subagent Orch     | v1.1      | 0/1            | Planned     | -          |
 | 14. Testing Framework  | v1.1      | 0/4            | Not started | -          |
 
 ---
 
 _Roadmap created: 2026-01-31_
-_v1.1 milestone: 6 phases, 15 plans (after removing Doctor/Setup/Service phases)_
+_v1.1 milestone: 6 phases, 16 plans (after removing Doctor/Setup/Service phases)_
