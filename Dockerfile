@@ -32,15 +32,14 @@ RUN npm ci --omit=dev
 # Copy built application
 COPY dist ./dist
 
-# Create data directory and set ownership
-RUN mkdir -p /app/data && chown -R klausbot:klausbot /app
+# Set ownership
+RUN chown -R klausbot:klausbot /app
 
 # Ensure klausbot home directory is fully owned by klausbot
 RUN mkdir -p /home/klausbot/.klausbot && chown -R klausbot:klausbot /home/klausbot
 
 # Environment
 ENV NODE_ENV=production
-ENV DATA_DIR=/app/data
 ENV KLAUSBOT_HOME=/home/klausbot/.klausbot
 
 # Switch to non-root user
