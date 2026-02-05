@@ -16,6 +16,13 @@ export interface QueuedMessage {
   status: MessageStatus;
   error?: string;
   media?: MediaAttachment[];
+  threading?: ThreadingContext;
+}
+
+/** Threading context for Telegram forum topics and reply linking */
+export interface ThreadingContext {
+  messageThreadId?: number; // Forum topic thread ID
+  replyToMessageId?: number; // Original message to reply to
 }
 
 /** Queue statistics */
@@ -117,9 +124,15 @@ export class MessageQueue {
    * @param chatId - Telegram chat ID
    * @param text - Message text
    * @param media - Optional media attachments
+   * @param threading - Optional threading context for forum topics/replies
    * @returns Message ID
    */
-  add(chatId: number, text: string, media?: MediaAttachment[]): string {
+  add(
+    chatId: number,
+    text: string,
+    media?: MediaAttachment[],
+    threading?: ThreadingContext,
+  ): string {
     const id = randomUUID();
     const message: QueuedMessage = {
       id,
@@ -128,6 +141,7 @@ export class MessageQueue {
       timestamp: Date.now(),
       status: "pending",
       media,
+      threading,
     };
 
     this.queue.push(message);
