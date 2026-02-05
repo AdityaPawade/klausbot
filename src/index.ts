@@ -100,8 +100,10 @@ program
 Skills: npx skills or manually add to ~/.claude/skills/
 
 Environment Variables:
-  TELEGRAM_BOT_TOKEN    Telegram bot token (required)
-  LOG_LEVEL             Log level (default: info)
+  TELEGRAM_BOT_TOKEN         Telegram bot token (required)
+  CLAUDE_CODE_OAUTH_TOKEN    Claude Code token (required in container)
+  OPENAI_API_KEY             OpenAI API key for semantic search (optional)
+  LOG_LEVEL                  Log level: silent|debug|info|warn|error (optional)
 `,
   );
 
