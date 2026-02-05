@@ -14,7 +14,11 @@ import {
   getPairingStore,
 } from "../pairing/index.js";
 import { KLAUSBOT_HOME } from "../memory/home.js";
-import { createChildLogger, sendLongMessage } from "../utils/index.js";
+import {
+  createChildLogger,
+  sendLongMessage,
+  markdownToTelegramHtml,
+} from "../utils/index.js";
 import { autoCommitChanges } from "../utils/git.js";
 import {
   initializeHome,
@@ -752,25 +756,33 @@ Use this chatId when creating cron jobs.
 
 /**
  * Split and send a long message directly via bot API
+ * Converts Markdown to Telegram HTML for proper formatting
  */
 async function splitAndSend(chatId: number, text: string): Promise<number> {
   const MAX_LENGTH = 4096;
   const chunks: string[] = [];
 
-  let remaining = text;
+  // Convert Markdown to Telegram HTML
+  const html = markdownToTelegramHtml(text);
+
+  let remaining = html;
   while (remaining.length > 0) {
     if (remaining.length <= MAX_LENGTH) {
       chunks.push(remaining);
       break;
     }
 
-    // Try to split at sentence boundary
-    let splitPoint = remaining.lastIndexOf(". ", MAX_LENGTH);
-    if (splitPoint === -1 || splitPoint < MAX_LENGTH * 0.5) {
+    // Try to split at paragraph boundary (double newline)
+    let splitPoint = remaining.lastIndexOf("\n\n", MAX_LENGTH);
+    if (splitPoint === -1 || splitPoint < MAX_LENGTH * 0.3) {
+      // Try sentence boundary
+      splitPoint = remaining.lastIndexOf(". ", MAX_LENGTH);
+    }
+    if (splitPoint === -1 || splitPoint < MAX_LENGTH * 0.3) {
       // Try word boundary
       splitPoint = remaining.lastIndexOf(" ", MAX_LENGTH);
     }
-    if (splitPoint === -1 || splitPoint < MAX_LENGTH * 0.5) {
+    if (splitPoint === -1 || splitPoint < MAX_LENGTH * 0.3) {
       // Hard split
       splitPoint = MAX_LENGTH;
     }
@@ -779,9 +791,15 @@ async function splitAndSend(chatId: number, text: string): Promise<number> {
     remaining = remaining.slice(splitPoint + 1);
   }
 
-  // Send chunks with delay
+  // Send chunks with delay, using HTML parse mode
   for (const chunk of chunks) {
-    await bot.api.sendMessage(chatId, chunk);
+    try {
+      await bot.api.sendMessage(chatId, chunk, { parse_mode: "HTML" });
+    } catch (err) {
+      // If HTML parsing fails, fall back to plain text
+      log.warn({ err, chatId }, "HTML parse failed, sending as plain text");
+      await bot.api.sendMessage(chatId, text.slice(0, MAX_LENGTH));
+    }
     if (chunks.length > 1) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
