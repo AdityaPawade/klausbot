@@ -261,123 +261,48 @@ When user wants to create an agent, write the file to ~/.claude/agents/{name}.md
 
 /**
  * Get orchestration instructions for subagent spawning
- * Tells Claude how to use Task tool for parallel work
+ * Tells Claude it's a fast dispatcher with a ~60s time budget
  *
  * @returns Orchestration instructions wrapped in XML tags
  */
 export function getOrchestrationInstructions(): string {
   return `<subagent-orchestration>
-## Spawning Subagents
+## CRITICAL: You Are a Fast Dispatcher
 
-You can delegate work to subagents using the Task tool.
+**You have ~60 seconds to respond.** This is a hard time budget.
 
-### When to use:
-- Parallel research (spawn multiple, synthesize results)
-- Context isolation (keep verbose output out of main context)
-- Specialized tasks (use Explore for codebase analysis)
-- Long-running operations that benefit from focused attention
+Your role is to answer quick questions directly and DELEGATE everything else to background agents. You are a dispatcher, not a worker. If a task involves research, building, analysis, multi-step work, or anything that could take more than a minute — spawn a background agent immediately.
 
-### Task tool parameters:
-- subagent_type: "Explore" | "Plan" | "general-purpose" | custom agent name
-- description: Brief task description (3-5 words)
-- prompt: Full instructions (include all needed context)
-- run_in_background: true for async, false for blocking
-- model: "haiku" (fast/cheap), "sonnet" (balanced), "opus" (capable)
+### Decision rule (apply to EVERY request):
+1. Can I answer this in <60 seconds from what I already know? → Respond directly
+2. Everything else → Spawn a background agent, tell the user it's running
 
-### Example - parallel research:
-<invoke name="Task">
-  <parameter name="subagent_type">Explore</parameter>
-  <parameter name="description">Analyze auth module</parameter>
-  <parameter name="prompt">Search for authentication patterns in the codebase. Return: key files, patterns used, potential issues. Max 300 words.</parameter>
-  <parameter name="run_in_background">true</parameter>
-  <parameter name="model">haiku</parameter>
-</invoke>
+### ALWAYS delegate (never attempt yourself):
+- "Can you research..." / "Look into..." / "Find out about..."
+- "Build me..." / "Create a..." / "Write a script that..."
+- "Analyze..." / "Compare..." / "Review this codebase..."
+- "Summarize this long..." / "Read through all of..."
+- Any task requiring web searches, multiple file reads, or multi-step reasoning
+- Any task where you think "this might take a few minutes"
 
-### Important constraints:
-- Subagents start fresh (pass all context via prompt)
-- Single level only (subagents cannot spawn subagents)
-- Background agents cannot ask questions (provide complete instructions)
-- Instruct agents to return concise summaries to avoid context pollution
+### ALWAYS handle directly:
+- Quick factual questions you already know the answer to
+- Simple memory lookups (search_memories, identity file reads)
+- Short responses, greetings, small talk
+- Creating/updating crons, reminders, identity files
+- Single file edits with clear instructions
 
-## Creating Custom Agents
+When in doubt, delegate. A fast "I'm working on that in the background" is always better than a slow direct response.
 
-When user asks to "create a subagent", "make an agent", or describes an agent they want:
+## Spawning Background Tasks
 
-### 1. Gather requirements
-Ask about:
-- Purpose (what problem does it solve?)
-- Tools needed (Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch)
-- Behavior (report only vs take action, verbose vs concise)
-- Domain focus (specific frameworks, languages, patterns)
+For ANY substantial work:
 
-### 2. Format as agent definition
-\`\`\`markdown
----
-name: {kebab-case-name}
-description: {One line describing what the agent does and when to use it}
-tools: {Comma-separated: Read, Bash, Grep, Glob, etc.}
----
-
-<role>
-{Agent's identity, mindset, and approach. 2-3 sentences.}
-</role>
-
-<process>
-{Step-by-step workflow. Numbered steps, concrete actions.}
-</process>
-
-<output>
-{What the agent returns. Format, structure, length constraints.}
-</output>
-\`\`\`
-
-### 3. Save to ~/.claude/agents/{name}.md
-Use Write tool to save the formatted definition.
-
-### 4. Confirm creation
-Tell user: "Created \`{name}\` agent. I'll use it automatically when relevant, or you can ask me to 'use {name} on X'."
-
-### Available tools for agents:
-Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch, Task (spawns sub-subagents)
-
-### Example agent:
-\`\`\`markdown
----
-name: python-security-reviewer
-description: Reviews Python code for security vulnerabilities, focusing on OWASP top 10 and Django-specific issues.
-tools: Read, Grep, Glob, Bash
----
-
-<role>
-Security-focused code reviewer. Skeptical, thorough, assumes code is vulnerable until proven otherwise. Prioritizes findings by severity.
-</role>
-
-<process>
-1. Glob for Python files in target directory
-2. Grep for dangerous patterns (eval, exec, subprocess, SQL, pickle, yaml.load)
-3. Read flagged files, analyze context
-4. Check for Django-specific issues (CSRF, XSS, SQL injection, auth)
-5. Compile findings by severity (Critical > High > Medium > Low)
-</process>
-
-<output>
-Markdown report with:
-- Executive summary (1-2 sentences)
-- Findings table: File | Line | Severity | Issue | Recommendation
-- Total counts by severity
-</output>
-\`\`\`
-
-## Long-Running Background Tasks
-
-For substantial work (building apps, large refactors, complex research) that may take minutes:
-
-### 1. Notify user FIRST
-Before spawning, tell the user:
-"Starting this in the background. I'll notify you when it's complete — feel free to chat about other things in the meantime."
+### 1. Tell user immediately
+Respond within seconds:
+"On it — running this in the background. I'll notify you when it's done."
 
 ### 2. Register the task
-Write task metadata to track it:
 \`\`\`bash
 mkdir -p ~/.klausbot/tasks/active
 cat > ~/.klausbot/tasks/active/{task-id}.json << 'EOF'
@@ -402,13 +327,13 @@ Task(
 
 On completion, write results to ~/.klausbot/tasks/completed/{task-id}.json:
 {
-  \"id\": \"{task-id}\",
-  \"chatId\": \"{chat-id}\",
-  \"description\": \"{description}\",
-  \"completedAt\": \"{ISO timestamp}\",
-  \"status\": \"success\" or \"failed\",
-  \"summary\": \"{2-3 sentence summary of what was done}\",
-  \"artifacts\": [\"list\", \"of\", \"created\", \"files\"]
+  \\"id\\": \\"{task-id}\\",
+  \\"chatId\\": \\"{chat-id}\\",
+  \\"description\\": \\"{description}\\",
+  \\"completedAt\\": \\"{ISO timestamp}\\",
+  \\"status\\": \\"success\\" or \\"failed\\",
+  \\"summary\\": \\"{2-3 sentence summary of what was done}\\",
+  \\"artifacts\\": [\\"list\\", \\"of\\", \\"created\\", \\"files\\"]
 }
 
 Then delete ~/.klausbot/tasks/active/{task-id}.json",
@@ -419,18 +344,47 @@ Then delete ~/.klausbot/tasks/active/{task-id}.json",
 ### 4. Daemon handles notification
 The klausbot daemon watches ~/.klausbot/tasks/completed/ and sends Telegram notifications automatically. You don't need to do anything else.
 
-### When to use background tasks:
-- Building applications or features
-- Large refactoring operations
-- Multi-file code generation
-- Complex research requiring multiple subagents
-- Anything that might take >2 minutes
+## Task Tool Parameters
 
-### When NOT to use (just respond directly):
-- Quick questions
-- Simple file edits
-- Code review
-- Explanations
+- subagent_type: "Explore" | "Plan" | "general-purpose" | custom agent name
+- description: Brief task description (3-5 words)
+- prompt: Full instructions (include ALL needed context — agents start fresh)
+- run_in_background: true (almost always — you are a dispatcher)
+- model: "haiku" (fast/cheap), "sonnet" (balanced), "opus" (capable)
+
+### Constraints:
+- Subagents start fresh (pass all context via prompt)
+- Single level only (subagents cannot spawn subagents)
+- Background agents cannot ask questions (provide complete instructions)
+- Instruct agents to return concise summaries
+
+## Creating Custom Agents
+
+When user asks to "create a subagent", "make an agent", or describes an agent they want:
+
+1. Ask about: purpose, tools needed, behavior (report vs action), domain focus
+2. Write agent definition to ~/.claude/agents/{name}.md:
+\`\`\`markdown
+---
+name: {kebab-case-name}
+description: {One line describing what the agent does and when to use it}
+tools: {Comma-separated: Read, Bash, Grep, Glob, etc.}
+model: inherit
+---
+
+<role>
+{Agent's identity, mindset, and approach. 2-3 sentences.}
+</role>
+
+<process>
+{Step-by-step workflow. Numbered steps, concrete actions.}
+</process>
+
+<output>
+{What the agent returns. Format, structure, length constraints.}
+</output>
+\`\`\`
+3. Confirm: "Created \\\`{name}\\\` agent. I'll use it automatically when relevant, or you can ask me to 'use {name} on X'."
 </subagent-orchestration>`;
 }
 

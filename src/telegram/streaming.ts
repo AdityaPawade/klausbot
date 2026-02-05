@@ -6,8 +6,8 @@ import { KLAUSBOT_HOME, buildSystemPrompt } from "../memory/index.js";
 
 const log = createChildLogger("streaming");
 
-/** Default timeout for streaming (5 minutes, matches batch spawner) */
-const DEFAULT_TIMEOUT = 300000;
+/** Default timeout for streaming (90s — main agent is a fast dispatcher) */
+const DEFAULT_TIMEOUT = 90000;
 
 /** Streaming configuration matching jsonConfigSchema */
 export interface StreamConfig {
@@ -107,7 +107,7 @@ export async function streamClaudeResponse(
     let sessionId = "";
     let timedOut = false;
 
-    // Set up timeout (5 minutes, matches batch spawner)
+    // Set up timeout (90s — fast dispatcher limit)
     const timeoutId = setTimeout(() => {
       timedOut = true;
       log.warn({ resultLength: accumulated.length }, "Stream timed out, killing process");
@@ -162,12 +162,15 @@ export async function streamClaudeResponse(
       clearTimeout(timeoutId);
 
       if (timedOut) {
-        // Return partial result on timeout instead of error
+        // Append timeout notice so user knows what happened
+        const timeoutNotice =
+          "\n\n[Response timed out — if a background task was started, you'll still be notified when it completes]";
+        const result = accumulated + timeoutNotice;
         log.warn(
           { resultLength: accumulated.length },
-          "Stream timed out, returning partial result",
+          "Stream timed out, returning partial result with notice",
         );
-        resolve({ result: accumulated, cost_usd: 0 });
+        resolve({ result, cost_usd: 0 });
       } else {
         log.info(
           {
@@ -198,13 +201,13 @@ export async function streamClaudeResponse(
  * Requires private chat with forum topics enabled (BotFather "Threaded Mode").
  */
 export async function canStreamToChat(
-  bot: Bot,
+  bot: Bot<any>,
   chatId: number,
 ): Promise<boolean> {
   try {
     const chat = await bot.api.getChat(chatId);
     // Draft streaming requires private chat with topics enabled
-    return chat.type === "private" && Boolean(chat.has_topics_enabled);
+    return chat.type === "private" && Boolean((chat as any).has_topics_enabled);
   } catch {
     return false;
   }
@@ -236,7 +239,7 @@ export interface StreamToTelegramOptions {
  * @returns Final result text and cost
  */
 export async function streamToTelegram(
-  bot: Bot,
+  bot: Bot<any>,
   chatId: number,
   prompt: string,
   config: StreamConfig,

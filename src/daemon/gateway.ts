@@ -244,7 +244,7 @@ export async function startGateway(): Promise<void> {
   // Initialize background task watcher
   stopTaskWatcher = startTaskWatcher({
     sendMessage: async (chatId: string, text: string) => {
-      await bot.telegram.sendMessage(chatId, text, { parse_mode: "HTML" });
+      await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
     },
   });
   log.info("Background task watcher initialized");
@@ -651,6 +651,9 @@ Use this chatId when creating cron jobs or background tasks.
       log.info({ chatId: msg.chatId }, "Heartbeat note collection triggered");
     }
 
+    // Get config (must be before subagents/streaming checks that depend on it)
+    const jsonConfig = getJsonConfig();
+
     // Get subagents config and generate task list ID
     const subagentsConfig = jsonConfig.subagents ?? { enabled: true, taskListIdPrefix: "klausbot" };
     const taskListId = subagentsConfig.enabled
@@ -667,8 +670,7 @@ Use this chatId when creating cron jobs or background tasks.
       ? chatIdContext + "\n\n" + BOOTSTRAP_INSTRUCTIONS
       : chatIdContext + noteInstructions + orchestrationInstructions;
 
-    // Get config and check streaming
-    const jsonConfig = getJsonConfig();
+    // Check streaming
     const streamingEnabled =
       !isBootstrap && (jsonConfig.streaming?.enabled ?? true);
     const canStream = streamingEnabled && (await canStreamToChat(bot, msg.chatId));

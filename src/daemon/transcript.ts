@@ -122,5 +122,5 @@ export function handleTimeout(cwd: string): string | null {
     return null;
   }
 
-  return `[Recovered from timeout]\n\n${response}`;
+  return `${response}\n\n[Response timed out — if a background task was started, you'll still be notified when it completes]`;
 }

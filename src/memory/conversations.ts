@@ -187,7 +187,8 @@ export function getRecentConversations(
     .select()
     .from(conversations)
     .orderBy(desc(conversations.endedAt))
-    .limit(limit);
+    .limit(limit)
+    .$dynamic();
 
   if (daysBack) {
     const cutoff = new Date();
@@ -197,7 +198,8 @@ export function getRecentConversations(
       .from(conversations)
       .where(gte(conversations.endedAt, cutoff.toISOString()))
       .orderBy(desc(conversations.endedAt))
-      .limit(limit);
+      .limit(limit)
+      .$dynamic();
   }
 
   return query.all() as ConversationRecord[];

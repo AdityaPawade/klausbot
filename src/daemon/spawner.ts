@@ -129,7 +129,7 @@ export interface SpawnerOptions {
   taskListId?: string;
 }
 
-const DEFAULT_TIMEOUT = 300000; // 5 minutes
+const DEFAULT_TIMEOUT = 90000; // 90 seconds — main agent is a fast dispatcher
 
 const logger: Logger = createChildLogger("spawner");
 
@@ -272,8 +272,8 @@ export async function queryClaudeCode(
 
         // Original timeout error if recovery fails
         const timeoutSec = Math.round(timeout / 1000);
-        const error = `Claude timed out after ${timeoutSec} seconds`;
-        logger.error({ timeout, duration_ms }, error);
+        const error = `Response timed out after ${timeoutSec}s — if a background task was started, you'll still be notified when it completes`;
+        logger.error({ timeout, duration_ms }, "Claude timed out, no recovery");
         reject(new Error(error));
         return;
       }
