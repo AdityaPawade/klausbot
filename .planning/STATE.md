@@ -68,7 +68,7 @@ Progress: [█████████░] 83% (phases 9 + 13 complete, 10-12 + 
 - mtime-based hot reload: getJsonConfig() cheap to call frequently
 - .env in ~/.klausbot/.env: Loads from both cwd and home
 - MIT license for klausbot open source
-- Fork-and-run model: Users fork repo and run via Docker or VM (not npm package)
+- Container-first: Docker is the deployment unit, provides isolation for Claude Code's unrestricted access
 - CLI simplified: Only daemon, mcp, hook, pairing commands active
 - Daemon auto-creates ~/.klausbot on startup (no init command needed)
 - Single README file (no docs/ folder)
