@@ -90,7 +90,7 @@ _Updated after each plan completion_
 - Streaming: No MCP/hooks (SessionStart/End don't apply to streams)
 - Throttler: minTime 100ms allows fast drafts, lets Telegram reject if needed
 - Gateway streaming: Skip streaming during bootstrap mode (identity files must exist first)
-- Timeout: 5 minute streaming timeout matches batch spawner, returns partial on timeout
+- Timeout: 90s dispatcher timeout (reduced from 5min), returns partial on timeout with user notice
 - Markdown to HTML: Convert Claude markdown to Telegram HTML for proper code blocks, bold, italic rendering
 - Drafts show raw markdown during streaming (preview), final message is formatted HTML
 - Threading: First chunk replies to user message; subsequent chunks in-thread only
@@ -115,19 +115,20 @@ None.
 
 ### Blockers/Concerns
 
-- Pre-existing TypeScript error in src/memory/conversations.ts (drizzle-orm type issue) - does not block execution
+None. All TypeScript errors resolved (was: drizzle-orm type issue + others).
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: Completed Phase 13.2 (Subagent Orchestration)
-Resume file: None
+Last session: 2026-02-06
+Stopped at: Pre-Phase 14 hardening complete, manual Telegram verification pending
+Resume file: .planning/phases/13.2-subagent-orchestration/.continue-here.md
 
 ## Next Steps
 
-1. `/gsd:plan-phase 14` — Plan testing framework (final phase of v1.1)
+1. Deploy and test via Telegram (streaming, threading, heartbeat, subagents, 90s timeout)
+2. `/gsd:plan-phase 14` — Plan testing framework (final phase of v1.1)
 
 ---
 
-_State updated: 2026-02-05 (Phase 13.2 complete)_
+_State updated: 2026-02-06 (pre-Phase 14 hardening session)_
 _v1.1 in progress_
