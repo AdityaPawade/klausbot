@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 ## Current Position
 
 Phase: 12 of 14 (Heartbeat System)
-Plan: 2/2 complete
+Plan: 3/3 complete
 Status: Phase complete
-Last activity: 2026-02-05 — Gateway integration for heartbeat
+Last activity: 2026-02-05 — Heartbeat note collection
 
-Progress: [████████████░] 65% (phases 9, 10, 11, 12, 13 complete; 14 remaining)
+Progress: [████████████░] 70% (phases 9, 10, 11, 12, 13 complete; 14 remaining)
 
 ## Milestone Summary
 
@@ -41,9 +41,9 @@ Progress: [████████████░] 65% (phases 9, 10, 11, 12, 1
 
 **Velocity:**
 
-- Total plans completed: 10 (v1.1)
-- Average duration: 3m 12s
-- Total execution time: 32m 00s
+- Total plans completed: 11 (v1.1)
+- Average duration: 3m 03s
+- Total execution time: 33m 20s
 
 **By Phase:**
 
@@ -53,7 +53,7 @@ Progress: [████████████░] 65% (phases 9, 10, 11, 12, 1
 | 10-telegram-streaming  | 2/2   | 7m 29s  | 3m 45s   |
 | 11-telegram-threading  | 1/1   | 4m 00s  | 4m 00s   |
 | 13-docker-release      | 2/2   | 4m 02s  | 2m 01s   |
-| 12-heartbeat-system    | 2/2   | 5m 15s  | 2m 38s   |
+| 12-heartbeat-system    | 3/3   | 6m 35s  | 2m 12s   |
 
 _Updated after each plan completion_
 
@@ -98,6 +98,7 @@ _Updated after each plan completion_
 - Heartbeat: HEARTBEAT_OK exact match suppresses notification
 - Heartbeat: Hot reload via config re-check on each tick
 - Heartbeat: Gateway integration keeps cron and heartbeat schedulers together in lifecycle
+- Heartbeat: Note collection uses regex triggers; Claude interprets intent (not verbatim storage)
 
 ### Pending Todos
 
@@ -110,7 +111,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 12-02-PLAN.md (Gateway Integration)
+Stopped at: Completed 12-03-PLAN.md (Note Collection)
 Resume file: None
 
 ## Next Steps
@@ -119,5 +120,5 @@ Resume file: None
 
 ---
 
-_State updated: 2026-02-05 (Phase 12 complete)_
+_State updated: 2026-02-05 (Phase 12 plan 03 complete)_
 _v1.1 in progress_
