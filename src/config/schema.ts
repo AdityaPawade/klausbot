@@ -50,6 +50,15 @@ export const jsonConfigSchema = z
   .object({
     /** AI model to use for responses (opus, sonnet, haiku) */
     model: z.string().optional(),
+    /** Streaming configuration for real-time responses */
+    streaming: z
+      .object({
+        /** Enable streaming mode (default: true) */
+        enabled: z.boolean().default(true),
+        /** Minimum interval between draft updates in ms (100-2000, default: 500) */
+        throttleMs: z.number().min(100).max(2000).default(500),
+      })
+      .default({ enabled: true, throttleMs: 500 }),
   })
   .strict(); // Fail on unknown keys
 
