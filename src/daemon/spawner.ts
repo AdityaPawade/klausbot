@@ -123,6 +123,10 @@ export interface SpawnerOptions {
   model?: string;
   /** Additional instructions appended to system prompt (for bootstrap mode) */
   additionalInstructions?: string;
+  /** Enable Task tool for subagent spawning (default: false) */
+  enableSubagents?: boolean;
+  /** Task list ID for multi-session coordination */
+  taskListId?: string;
 }
 
 const DEFAULT_TIMEOUT = 300000; // 5 minutes
@@ -198,13 +202,24 @@ export async function queryClaudeCode(
       args.push("--model", options.model);
     }
 
+    // Enable Task tool if requested (for subagent orchestration)
+    if (options.enableSubagents) {
+      args.push("--allowedTools", "Task");
+    }
+
     logger.debug({ hooksConfig: hooksSettings }, "Hook configuration");
+
+    // Build environment with optional task list ID
+    const env = { ...process.env };
+    if (options.taskListId) {
+      env.CLAUDE_CODE_TASK_LIST_ID = options.taskListId;
+    }
 
     // CRITICAL: stdin must inherit to avoid hang bug (issue #771)
     const claude = spawn("claude", args, {
       stdio: ["inherit", "pipe", "pipe"],
       cwd: KLAUSBOT_HOME, // Working directory for agentic file access
-      env: process.env,
+      env,
     });
 
     let stdout = "";

@@ -29,6 +29,10 @@ export interface StreamOptions {
   model?: string;
   additionalInstructions?: string;
   signal?: AbortSignal;
+  /** Enable Task tool for subagent spawning (default: false) */
+  enableSubagents?: boolean;
+  /** Task list ID for multi-session coordination */
+  taskListId?: string;
 }
 
 /** Result from streaming Claude response */
@@ -79,12 +83,23 @@ export async function streamClaudeResponse(
     args.push("--model", options.model);
   }
 
+  // Enable Task tool if requested (for subagent orchestration)
+  if (options.enableSubagents) {
+    args.push("--allowedTools", "Task");
+  }
+
   return new Promise((resolve, reject) => {
+    // Build environment with optional task list ID
+    const env = { ...process.env };
+    if (options.taskListId) {
+      env.CLAUDE_CODE_TASK_LIST_ID = options.taskListId;
+    }
+
     // CRITICAL: stdin must inherit to avoid hang bug (same as spawner.ts)
     const claude = spawn("claude", args, {
       stdio: ["inherit", "pipe", "pipe"],
       cwd: KLAUSBOT_HOME,
-      env: process.env,
+      env,
     });
 
     let accumulated = "";
