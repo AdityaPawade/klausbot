@@ -59,31 +59,51 @@ Only approved users can interact with the bot.
 
 ### CLI Commands
 
-All commands work in both Docker and local environments:
+All commands work in both Docker and local environments.
 
-| Action | Docker | Local |
-| ------ | ------ | ----- |
-| **Start daemon** | `docker compose up -d` | `npm run dev -- daemon` |
-| **View logs** | `docker compose logs -f` | (logs to stdout) |
-| **Restart** | `docker compose restart` | (restart process) |
+#### Daemon
+
+```bash
+# Docker
+docker compose up -d
+docker compose logs -f
+docker compose restart
+
+# Local
+npm run dev -- daemon
+```
 
 #### Pairing
 
-| Action | Docker | Local |
-| ------ | ------ | ----- |
-| List users | `docker compose exec bot klausbot pairing list` | `npm run dev -- pairing list` |
-| Approve | `docker compose exec bot klausbot pairing approve <code>` | `npm run dev -- pairing approve <code>` |
-| Reject | `docker compose exec bot klausbot pairing reject <code>` | `npm run dev -- pairing reject <code>` |
-| Revoke | `docker compose exec bot klausbot pairing revoke <chatId>` | `npm run dev -- pairing revoke <chatId>` |
+```bash
+# Docker
+docker compose exec bot klausbot pairing list
+docker compose exec bot klausbot pairing approve <code>
+docker compose exec bot klausbot pairing reject <code>
+docker compose exec bot klausbot pairing revoke <chatId>
+
+# Local
+npm run dev -- pairing list
+npm run dev -- pairing approve <code>
+npm run dev -- pairing reject <code>
+npm run dev -- pairing revoke <chatId>
+```
 
 #### Cron Jobs
 
-| Action | Docker | Local |
-| ------ | ------ | ----- |
-| List jobs | `docker compose exec bot klausbot cron list` | `npm run dev -- cron list` |
-| Enable | `docker compose exec bot klausbot cron enable <id>` | `npm run dev -- cron enable <id>` |
-| Disable | `docker compose exec bot klausbot cron disable <id>` | `npm run dev -- cron disable <id>` |
-| Delete | `docker compose exec bot klausbot cron delete --id <id>` | `npm run dev -- cron delete --id <id>` |
+```bash
+# Docker
+docker compose exec bot klausbot cron list
+docker compose exec bot klausbot cron enable <id>
+docker compose exec bot klausbot cron disable <id>
+docker compose exec bot klausbot cron delete --id <id>
+
+# Local
+npm run dev -- cron list
+npm run dev -- cron enable <id>
+npm run dev -- cron disable <id>
+npm run dev -- cron delete --id <id>
+```
 
 ### Telegram Commands
 
