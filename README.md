@@ -50,16 +50,20 @@ npm run dev -- daemon
 
 ### Docker
 
+First, generate a Claude Code token on your host machine:
+```bash
+claude setup-token
+```
+
+Then run the container with the token:
 ```bash
 docker build -t klausbot .
 docker run -d \
   -e TELEGRAM_BOT_TOKEN=your-token \
-  -e ANTHROPIC_API_KEY=your-key \
+  -e CLAUDE_CODE_OAUTH_TOKEN=your-claude-token \
   -v klausbot-data:/home/klausbot/.klausbot \
   klausbot
 ```
-
-Note: You'll need to run `claude login` inside the container on first run, or mount your Claude credentials.
 
 ### Pairing Your Telegram Account
 
