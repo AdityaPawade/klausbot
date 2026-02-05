@@ -27,6 +27,7 @@ import {
   closeDb,
   invalidateIdentityCache,
   runMigrations,
+  getOrchestrationInstructions,
 } from "../memory/index.js";
 import { needsBootstrap, BOOTSTRAP_INSTRUCTIONS } from "../bootstrap/index.js";
 import { validateRequiredCapabilities } from "../platform/index.js";
@@ -634,9 +635,21 @@ Use this chatId when creating cron jobs.
       log.info({ chatId: msg.chatId }, "Heartbeat note collection triggered");
     }
 
+    // Get subagents config and generate task list ID
+    const subagentsConfig = jsonConfig.subagents ?? { enabled: true, taskListIdPrefix: "klausbot" };
+    const taskListId = subagentsConfig.enabled
+      ? `${subagentsConfig.taskListIdPrefix}-${msg.chatId}-${Date.now()}`
+      : undefined;
+
+    // Add orchestration instructions if subagents enabled (skip during bootstrap)
+    let orchestrationInstructions = "";
+    if (!isBootstrap && subagentsConfig.enabled) {
+      orchestrationInstructions = "\n\n" + getOrchestrationInstructions();
+    }
+
     const additionalInstructions = isBootstrap
       ? chatIdContext + "\n\n" + BOOTSTRAP_INSTRUCTIONS
-      : chatIdContext + noteInstructions;
+      : chatIdContext + noteInstructions + orchestrationInstructions;
 
     // Get config and check streaming
     const jsonConfig = getJsonConfig();
@@ -663,6 +676,8 @@ Use this chatId when creating cron jobs.
             model: jsonConfig.model,
             additionalInstructions,
             messageThreadId: msg.threading?.messageThreadId,
+            enableSubagents: subagentsConfig.enabled,
+            taskListId,
           },
         );
 
@@ -730,6 +745,8 @@ Use this chatId when creating cron jobs.
     const response = await queryClaudeCode(effectiveText, {
       additionalInstructions,
       model: jsonConfig.model,
+      enableSubagents: subagentsConfig.enabled,
+      taskListId,
     });
 
     // Stop typing indicator

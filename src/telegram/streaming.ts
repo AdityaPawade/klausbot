@@ -218,6 +218,10 @@ export interface StreamToTelegramOptions {
   model?: string;
   additionalInstructions?: string;
   messageThreadId?: number;
+  /** Enable Task tool for subagent spawning (default: false) */
+  enableSubagents?: boolean;
+  /** Task list ID for multi-session coordination */
+  taskListId?: string;
 }
 
 /**
@@ -269,6 +273,8 @@ export async function streamToTelegram(
         model: options?.model,
         additionalInstructions: options?.additionalInstructions,
         signal: controller.signal,
+        enableSubagents: options?.enableSubagents,
+        taskListId: options?.taskListId,
       },
       onChunk,
     );

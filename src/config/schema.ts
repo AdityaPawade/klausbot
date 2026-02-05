@@ -70,6 +70,15 @@ export const jsonConfigSchema = z
         intervalMs: z.number().min(60000).default(1800000),
       })
       .default({ enabled: true, intervalMs: 1800000 }),
+    /** Subagent orchestration configuration */
+    subagents: z
+      .object({
+        /** Enable Task tool for subagent spawning (default: true) */
+        enabled: z.boolean().default(true),
+        /** Task list ID prefix for multi-session coordination */
+        taskListIdPrefix: z.string().default("klausbot"),
+      })
+      .default({ enabled: true, taskListIdPrefix: "klausbot" }),
   })
   .strict(); // Fail on unknown keys
 
