@@ -152,7 +152,7 @@ Plans:
 
 Plans:
 
-- [ ] 13.2-01-PLAN.md — Enable Task tool in spawner, orchestration instructions, config integration
+- [x] 13.2-01-PLAN.md — Enable Task tool in spawner, orchestration instructions, config integration
 
 #### Phase 14: Testing Framework
 
@@ -187,7 +187,7 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 13.1 -> 13.2 -> 14
 | 12. Heartbeat System   | v1.1      | 3/3            | Complete    | 2026-02-05 |
 | 13. Docker & Release   | v1.1      | 2/2            | Complete    | 2026-02-05 |
 | 13.1 Dockerfile Deps   | v1.1      | 1/1            | Complete    | 2026-02-05 |
-| 13.2 Subagent Orch     | v1.1      | 0/1            | Planned     | -          |
+| 13.2 Subagent Orch     | v1.1      | 1/1            | Complete    | 2026-02-05 |
 | 14. Testing Framework  | v1.1      | 0/4            | Not started | -          |
 
 ---
