@@ -11,10 +11,10 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 
 Phase: 14 of 14 (Testing Framework)
 Plan: 0/? planned
-Status: Phase 13.3 complete, Phase 14 not yet planned
-Last activity: 2026-02-06 — Completed 13.3-02-PLAN.md (gateway integration + hook simplification)
+Status: All pre-14 phases complete, Phase 14 not yet planned
+Last activity: 2026-02-07 — Heartbeat chat routing + chatId propagation (13.3 polish)
 
-Progress: [██████████████░] 93% (phases 9, 10, 11, 12, 13, 13.1, 13.2, 13.3 complete; 14 remaining)
+Progress: [██████████████░] 93% (phases 9–13.3 complete; 14 remaining)
 
 ## Milestone Summary
 
@@ -108,6 +108,8 @@ _Updated after each plan completion_
 - Thread detection: Walk backward through 30min gaps between conversations
 - Tiered history: Full transcripts for active thread + today, summaries for yesterday + older
 - Retrieval instructions: Assertive "MANDATORY: Search Before Claiming Ignorance" enforcement
+- Heartbeat routing: Single-target delivery (config → in-memory → DB → first approved), not broadcast
+- chatId propagation: Cron jobs and heartbeat pass chatId to queryClaudeCode for per-chat context
 
 ### Roadmap Evolution
 
@@ -125,17 +127,17 @@ None. All TypeScript errors resolved (was: drizzle-orm type issue + others).
 
 ## Session Continuity
 
-Last session: 2026-02-06
-Stopped at: Completed 13.3-02-PLAN.md (gateway integration + hook simplification)
+Last session: 2026-02-07
+Stopped at: Heartbeat chat routing + chatId propagation complete
 Resume file: None
 
 ## Next Steps
 
-1. `/gsd:plan-phase 14` -- Plan testing framework (final phase of v1.1)
+1. Plan Phase 14 — Testing framework (final phase of v1.1)
 2. Execute Phase 14 plans
 3. v1.1 Production Ready complete
 
 ---
 
-_State updated: 2026-02-06 (13.3-02 gateway integration + hook simplification complete)_
+_State updated: 2026-02-07 (all pre-14 phases complete, heartbeat routing polish done)_
 _v1.1 in progress_
