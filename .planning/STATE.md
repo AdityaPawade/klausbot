@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 
 ## Current Position
 
-Phase: 13.2 of 14 (Subagent Orchestration)
-Plan: 1/1 complete
-Status: Phase complete
-Last activity: 2026-02-05 — Subagent orchestration (Task tool enablement)
+Phase: 13.3 of 14 (Infinite Conversation Context)
+Plan: 1/2 complete
+Status: In progress
+Last activity: 2026-02-06 — Completed 13.3-01-PLAN.md (conversation context engine)
 
-Progress: [██████████████░] 93% (phases 9, 10, 11, 12, 13, 13.1, 13.2 complete; 14 remaining)
+Progress: [██████████████░] 93% (phases 9, 10, 11, 12, 13, 13.1, 13.2 complete; 13.3 in progress; 14 remaining)
 
 ## Milestone Summary
 
@@ -41,9 +41,9 @@ Progress: [██████████████░] 93% (phases 9, 10, 11,
 
 **Velocity:**
 
-- Total plans completed: 12 (v1.1)
-- Average duration: 3m 06s
-- Total execution time: 37m 20s
+- Total plans completed: 13 (v1.1)
+- Average duration: 3m 05s
+- Total execution time: 40m 06s
 
 **By Phase:**
 
@@ -55,6 +55,7 @@ Progress: [██████████████░] 93% (phases 9, 10, 11,
 | 13-docker-release           | 2/2   | 4m 02s  | 2m 01s   |
 | 12-heartbeat-system         | 3/3   | 6m 35s  | 2m 12s   |
 | 13.2-subagent-orchestration | 1/1   | 4m 00s  | 4m 00s   |
+| 13.3-infinite-conversation  | 1/2   | 2m 46s  | 2m 46s   |
 
 _Updated after each plan completion_
 
@@ -103,11 +104,16 @@ _Updated after each plan completion_
 - Subagents: Enabled by default (true) - assumes users want full capability
 - Subagents: Task list ID includes chatId and timestamp - unique per chat session
 - Subagents: Orchestration instructions skip bootstrap mode - identity must exist first
+- Context budget: 120K chars (~30K tokens) via character estimation, no tokenizer library
+- Thread detection: Walk backward through 30min gaps between conversations
+- Tiered history: Full transcripts for active thread + today, summaries for yesterday + older
+- Retrieval instructions: Assertive "MANDATORY: Search Before Claiming Ignorance" enforcement
 
 ### Roadmap Evolution
 
 - Phase 13.1 inserted after Phase 13: Dockerfile Dependencies (URGENT) — Python + other runtime deps
 - Phase 13.2 inserted after Phase 13.1: Subagent Orchestration — Claude spawning Claudes, agent-to-agent comms
+- Phase 13.3 inserted after Phase 13.2: Infinite Conversation Context — timestamped history injection, thread detection, retrieval-first instructions
 
 ### Pending Todos
 
@@ -120,16 +126,16 @@ None. All TypeScript errors resolved (was: drizzle-orm type issue + others).
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Bug fixes done, bootstrap redesigned, testing new BOOTSTRAP.md flow
-Resume file: .planning/phases/13.2-subagent-orchestration/.continue-here.md
+Stopped at: Completed 13.3-01-PLAN.md (conversation context engine + retrieval rewrite)
+Resume file: None
 
 ## Next Steps
 
-1. Test BOOTSTRAP.md flow via Telegram (container running with fresh volume)
-2. Test normal operation (streaming, threading, heartbeat, subagents, background tasks)
+1. Execute 13.3-02-PLAN.md (gateway integration — wire buildConversationContext into system prompt)
+2. Test conversation context injection via Telegram
 3. `/gsd:plan-phase 14` — Plan testing framework (final phase of v1.1)
 
 ---
 
-_State updated: 2026-02-06 (bug fix + bootstrap redesign session)_
+_State updated: 2026-02-06 (13.3-01 conversation context engine complete)_
 _v1.1 in progress_
