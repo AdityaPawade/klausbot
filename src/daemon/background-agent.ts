@@ -23,13 +23,43 @@ const COMPLETED_DIR = path.join(TASKS_DIR, "completed");
 /** Default timeout for background agents: none (run indefinitely) */
 const DEFAULT_TIMEOUT = 0;
 
-const RESUME_PROMPT = `You are now continuing as a background agent. The user already received your immediate response.
+const BASE_RESUME_PROMPT = `You are now continuing as a background agent. The user already received your immediate response.
 
 Continue with the background work you described when you called start_background_task. Work autonomously — read files, write code, search the web, use any tools needed.
 
 For complex tasks that benefit from parallel investigation (research from multiple angles, competing hypotheses, multi-part analysis), consider using an agent team — spawn teammates to work different aspects simultaneously, then synthesize their findings.
 
 When finished, output a concise summary of what you accomplished and any results. This summary will be delivered to the user as a follow-up message.`;
+
+const CODING_ADDENDUM = `
+
+## Tool Routing
+- Read files with Read, not cat/head/tail
+- Edit files with Edit, not sed/awk — always Read before Edit/Write
+- Create files with Write, not echo/heredoc
+- Search files with Glob, not find/ls
+- Search content with Grep, not grep/rg
+
+## Git Safety
+- Never modify git config
+- Never force-push, reset --hard, or amend commits unless explicitly asked
+- Never skip hooks (--no-verify) unless explicitly asked
+- Use HEREDOC for commit messages`;
+
+const GENERAL_ADDENDUM = `
+
+## Memory-First Rule
+Before doing any work, check conversation history and memory for prior work on the same topic.
+If recent work exists, summarize it — don't redo it. Duplicate work is a failure.`;
+
+/**
+ * Build the resume prompt based on task kind
+ */
+function buildResumePrompt(kind: "coding" | "general"): string {
+  return kind === "coding"
+    ? BASE_RESUME_PROMPT + CODING_ADDENDUM
+    : BASE_RESUME_PROMPT + GENERAL_ADDENDUM;
+}
 
 export interface BackgroundAgentOptions {
   /** Session ID from the dispatcher's just-completed session */
@@ -40,6 +70,8 @@ export interface BackgroundAgentOptions {
   taskId: string;
   /** Human-readable task description */
   description: string;
+  /** Task kind: 'coding' for programming, 'general' for research/conversation */
+  kind?: "coding" | "general";
   /** Timeout in ms (default: 300000 = 5 min) */
   timeout?: number;
   /** Model override */
@@ -59,6 +91,7 @@ export function spawnBackgroundAgent(options: BackgroundAgentOptions): void {
     chatId,
     taskId,
     description,
+    kind = "general",
     timeout = DEFAULT_TIMEOUT,
     model,
   } = options;
@@ -77,7 +110,7 @@ export function spawnBackgroundAgent(options: BackgroundAgentOptions): void {
   };
   writeFileSync(activeTaskPath, JSON.stringify(taskData, null, 2));
   log.info(
-    { taskId, sessionId, chatId, description },
+    { taskId, sessionId, chatId, description, kind },
     "Background agent starting",
   );
 
@@ -91,7 +124,7 @@ export function spawnBackgroundAgent(options: BackgroundAgentOptions): void {
     sessionId,
     "--dangerously-skip-permissions",
     "-p",
-    RESUME_PROMPT,
+    buildResumePrompt(kind),
     "--output-format",
     "stream-json",
     "--verbose",

@@ -225,14 +225,17 @@ function maybeSpawnBackgroundAgent(
   if (!bgTool) return;
 
   const description = (bgTool.input.description as string) ?? "Background task";
+  const kind = (
+    (bgTool.input.kind as string) === "coding" ? "coding" : "general"
+  ) as "coding" | "general";
   const taskId = randomUUID();
 
   log.info(
-    { taskId, sessionId, chatId, description },
+    { taskId, sessionId, chatId, description, kind },
     "Spawning background agent from tool call",
   );
 
-  spawnBackgroundAgent({ sessionId, chatId, taskId, description, model });
+  spawnBackgroundAgent({ sessionId, chatId, taskId, description, kind, model });
 }
 
 /**

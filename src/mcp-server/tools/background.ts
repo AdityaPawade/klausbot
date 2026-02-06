@@ -25,9 +25,15 @@ export function registerBackgroundTools(server: McpServer): void {
         .describe(
           "Brief description of the background work to be done (shown to user in notification)",
         ),
+      kind: z
+        .enum(["coding", "general"])
+        .default("general")
+        .describe(
+          "Task kind: 'coding' for programming/file-editing, 'general' for research/conversation",
+        ),
     },
-    async ({ description }) => {
-      log.info({ description }, "Background task signal received");
+    async ({ description, kind }) => {
+      log.info({ description, kind }, "Background task signal received");
 
       return {
         content: [
