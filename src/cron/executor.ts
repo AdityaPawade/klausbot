@@ -47,6 +47,7 @@ export async function executeCronJob(job: CronJob): Promise<ExecutionResult> {
     const response = await queryClaudeCode(job.instruction, {
       timeout: CRON_TIMEOUT,
       model: jsonConfig.model,
+      chatId: job.chatId,
       additionalInstructions: `
 <cron-execution>
 This is an autonomous cron job execution.
@@ -87,6 +88,7 @@ Complete the task and provide a concise result summary.
       const retryResponse = await queryClaudeCode(job.instruction, {
         timeout: CRON_TIMEOUT,
         model: jsonConfig.model,
+        chatId: job.chatId,
         additionalInstructions: `
 <cron-execution>
 This is an autonomous cron job execution (retry attempt).
