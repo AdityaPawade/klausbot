@@ -52,6 +52,10 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsup",
+    "check": "run-s check:*",
+    "check:format": "prettier --check .",
+    "check:lint": "run-s lint:*",
+    "check:typecheck": "tsc --noEmit",
     "dev": "run-s build 'start {@}' --",
     "format": "run-s format:*",
     "format:prettier": "prettier --write .",
@@ -60,6 +64,7 @@
     "lint:semver": "syncpack lint-semver-ranges",
     "lint:syncpack": "syncpack lint",
     "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
     "update": "syncpack update && npm install"
   },
   "type": "module"
