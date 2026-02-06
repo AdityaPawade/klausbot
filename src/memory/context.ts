@@ -1,5 +1,17 @@
 import { existsSync, readFileSync } from "fs";
 import { getHomePath } from "./home.js";
+import {
+  getConversationsForContext,
+  parseTranscript,
+  type ConversationRecord,
+} from "./conversations.js";
+
+/** Thread detection: conversations within 30min of each other are one thread */
+const ACTIVE_THREAD_WINDOW_MS = 30 * 60 * 1000;
+/** Today window: 24 hours */
+const TODAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** Maximum injected context characters (~30K tokens at 4:1 ratio) */
+const MAX_CONTEXT_CHARS = 120_000;
 
 /**
  * Cache identity content at startup to avoid blocking I/O per request
@@ -320,6 +332,225 @@ You: "On it — researching the budget now. I'll send you a full breakdown short
 
 **The tool call is what triggers background work. Without it, nothing happens in the background. Saying "I'll research this" without calling the tool is a lie.**
 </background-agent-orchestration>`;
+}
+
+/**
+ * Get relative time label for a date string
+ * Same calendar day → "today", previous day → "yesterday", else day name
+ */
+function getRelativeTimeLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+
+  // Compare calendar dates (not timestamps)
+  const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round(
+    (nowDay.getTime() - dateDay.getTime()) / (24 * 60 * 60 * 1000),
+  );
+
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+  return date.toLocaleDateString("en-US", { weekday: "long" });
+}
+
+/**
+ * Extract text content from a single transcript entry
+ */
+function extractEntryText(entry: {
+  message?: { content?: Array<{ type: string; text?: string }> | string };
+}): string {
+  if (!entry.message?.content) return "";
+
+  if (typeof entry.message.content === "string") {
+    return entry.message.content;
+  }
+
+  if (Array.isArray(entry.message.content)) {
+    return entry.message.content
+      .filter(
+        (c: { type: string; text?: string }) => c.type === "text" && c.text,
+      )
+      .map((c: { type: string; text?: string }) => c.text)
+      .join("\n");
+  }
+
+  return "";
+}
+
+/**
+ * Format a conversation as full transcript XML
+ */
+function formatFullTranscript(conv: ConversationRecord): string {
+  const entries = parseTranscript(conv.transcript);
+  const relativeTime = getRelativeTimeLabel(conv.endedAt);
+
+  const messages = entries
+    .filter((e) => e.type === "user" || e.type === "assistant")
+    .map((e) => {
+      const role = e.type === "user" ? "human" : "you";
+      const time = e.timestamp
+        ? new Date(e.timestamp).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })
+        : "";
+      const text = extractEntryText(e);
+      return `[${role}${time ? " " + time : ""}] ${text}`;
+    })
+    .filter((line) => line.trim().length > line.indexOf("]") + 2); // skip empty entries
+
+  return `<conversation timestamp="${conv.startedAt}" relative="${relativeTime}">\n${messages.join("\n")}\n</conversation>`;
+}
+
+/**
+ * Format a conversation as summary XML
+ */
+function formatSummaryXml(conv: ConversationRecord): string {
+  const relativeTime = getRelativeTimeLabel(conv.endedAt);
+  return `<conversation timestamp="${conv.startedAt}" relative="${relativeTime}" summary="true">\nSummary: ${conv.summary}\n</conversation>`;
+}
+
+/**
+ * Detect active thread by walking backward through conversations
+ * Returns set of sessionIds that form the active thread chain
+ */
+function detectActiveThread(convs: ConversationRecord[]): {
+  isContinuation: boolean;
+  threadSessionIds: Set<string>;
+} {
+  if (convs.length === 0) {
+    return { isContinuation: false, threadSessionIds: new Set() };
+  }
+
+  const now = Date.now();
+  const mostRecent = convs[0]; // already sorted endedAt DESC
+  const mostRecentEnd = new Date(mostRecent.endedAt).getTime();
+
+  // Is the most recent conversation within 30min of now?
+  if (now - mostRecentEnd > ACTIVE_THREAD_WINDOW_MS) {
+    return { isContinuation: false, threadSessionIds: new Set() };
+  }
+
+  // Walk backward: include conversations that are within 30min of each other
+  const threadIds = new Set<string>();
+  threadIds.add(mostRecent.sessionId);
+  let prevEnd = mostRecentEnd;
+
+  for (let i = 1; i < convs.length; i++) {
+    const convEnd = new Date(convs[i].endedAt).getTime();
+    if (prevEnd - convEnd <= ACTIVE_THREAD_WINDOW_MS) {
+      threadIds.add(convs[i].sessionId);
+      prevEnd = convEnd;
+    } else {
+      break;
+    }
+  }
+
+  return { isContinuation: true, threadSessionIds: threadIds };
+}
+
+/**
+ * Build conversation context for system prompt injection
+ *
+ * Queries last 7 days of conversations for chatId, applies tiered formatting:
+ * - Tier 1 (FULL): Active thread (30min chain from most recent)
+ * - Tier 2 (FULL): Today's other conversations
+ * - Tier 3 (SUMMARY): Yesterday's conversations
+ * - Tier 4 (SUMMARY): Older (2-7 days)
+ *
+ * Enforces 120K character budget. Returns empty string if no conversations.
+ *
+ * @param chatId - Telegram chat ID to filter conversations
+ * @returns XML-tagged conversation history with thread status, or empty string
+ */
+export function buildConversationContext(chatId: number): string {
+  const allConvs = getConversationsForContext(chatId);
+  if (allConvs.length === 0) return "";
+
+  const now = Date.now();
+  const { isContinuation, threadSessionIds } = detectActiveThread(allConvs);
+
+  // Categorize into tiers
+  const tier1: ConversationRecord[] = []; // Active thread (FULL)
+  const tier2: ConversationRecord[] = []; // Today non-thread (FULL)
+  const tier3: ConversationRecord[] = []; // Yesterday (SUMMARY)
+  const tier4: ConversationRecord[] = []; // Older 2-7 days (SUMMARY)
+
+  for (const conv of allConvs) {
+    const endedMs = new Date(conv.endedAt).getTime();
+    const age = now - endedMs;
+
+    if (threadSessionIds.has(conv.sessionId)) {
+      tier1.push(conv);
+    } else if (age < TODAY_WINDOW_MS) {
+      tier2.push(conv);
+    } else {
+      // Check if yesterday vs older using calendar days
+      const label = getRelativeTimeLabel(conv.endedAt);
+      if (label === "yesterday") {
+        tier3.push(conv);
+      } else {
+        tier4.push(conv);
+      }
+    }
+  }
+
+  // Reverse tier1 so oldest-first (chronological reading order)
+  tier1.reverse();
+
+  let usedChars = 0;
+  const sections: string[] = [];
+
+  // Tier 1: Active thread (full transcripts, highest priority)
+  for (const conv of tier1) {
+    const formatted = formatFullTranscript(conv);
+    if (usedChars + formatted.length > MAX_CONTEXT_CHARS) {
+      // Truncate from oldest messages if single conversation exceeds budget
+      const remaining = MAX_CONTEXT_CHARS - usedChars;
+      if (remaining > 200) {
+        sections.push(formatted.slice(-remaining));
+        usedChars += remaining;
+      }
+      break;
+    }
+    sections.push(formatted);
+    usedChars += formatted.length;
+  }
+
+  // Tier 2: Today's other conversations (full transcripts)
+  for (const conv of tier2) {
+    const formatted = formatFullTranscript(conv);
+    if (usedChars + formatted.length > MAX_CONTEXT_CHARS) break;
+    sections.push(formatted);
+    usedChars += formatted.length;
+  }
+
+  // Tier 3: Yesterday (summaries)
+  for (const conv of tier3) {
+    const formatted = formatSummaryXml(conv);
+    if (usedChars + formatted.length > MAX_CONTEXT_CHARS) break;
+    sections.push(formatted);
+    usedChars += formatted.length;
+  }
+
+  // Tier 4: Older (summaries)
+  for (const conv of tier4) {
+    const formatted = formatSummaryXml(conv);
+    if (usedChars + formatted.length > MAX_CONTEXT_CHARS) break;
+    sections.push(formatted);
+    usedChars += formatted.length;
+  }
+
+  if (sections.length === 0) return "";
+
+  // Thread status tag
+  const threadStatus = isContinuation
+    ? `<thread-status>CONTINUATION — You are in an ongoing conversation. The user just messaged again. Do NOT greet or reintroduce yourself. Pick up naturally where you left off.</thread-status>`
+    : `<thread-status>NEW CONVERSATION — This is a new conversation or a return after a break.</thread-status>`;
+
+  return `<conversation-history>\n${threadStatus}\n${sections.join("\n")}\n</conversation-history>`;
 }
 
 /**

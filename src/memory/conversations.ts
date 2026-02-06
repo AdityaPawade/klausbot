@@ -212,6 +212,29 @@ export function getRecentConversations(
 }
 
 /**
+ * Get conversations for context injection (last 7 days, filtered by chatId)
+ * Returns all conversations within window — context builder handles budgeting
+ */
+export function getConversationsForContext(
+  chatId: number,
+): ConversationRecord[] {
+  const db = getDrizzle();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  return db
+    .select()
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.chatId, chatId),
+        gte(conversations.endedAt, sevenDaysAgo.toISOString()),
+      ),
+    )
+    .orderBy(desc(conversations.endedAt))
+    .all() as ConversationRecord[];
+}
+
+/**
  * Get a conversation by session ID
  */
 export function getConversationBySessionId(

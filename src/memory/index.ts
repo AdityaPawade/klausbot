@@ -24,6 +24,7 @@ export {
   loadIdentity,
   getRetrievalInstructions,
   getOrchestrationInstructions,
+  buildConversationContext,
   buildSystemPrompt,
   invalidateIdentityCache,
   reloadIdentity,
@@ -36,6 +37,7 @@ export { getDb, closeDb, runMigrations, getDrizzle } from "./db.js";
 export {
   storeConversation,
   getRecentConversations,
+  getConversationsForContext,
   getConversationBySessionId,
   parseTranscript,
   extractConversationText,
