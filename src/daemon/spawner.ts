@@ -202,7 +202,7 @@ export async function queryClaudeCode(
       "--output-format",
       "stream-json",
       "--verbose",
-      "--append-system-prompt",
+      "--system-prompt",
       systemPrompt,
       "--mcp-config",
       mcpConfigPath,

@@ -96,7 +96,7 @@ export async function streamClaudeResponse(
     "--output-format",
     "stream-json",
     "--verbose",
-    "--append-system-prompt",
+    "--system-prompt",
     systemPrompt,
     "--mcp-config",
     mcpConfigPath,
