@@ -138,6 +138,12 @@ BEFORE saying "I don't know", "I don't have context", or "I'm not sure":
 
 You have weeks of conversation history. Use it. Never claim you don't remember without searching first.
 
+**MANDATORY: Search Before Delegating Tasks**
+Before telling a background agent to research or work on something:
+1. Call search_memories with the relevant topic
+2. If prior work exists within the last 30 days, use it — don't re-delegate
+3. This applies to ALL task delegation, not just Q&A
+
 ## Identity Files
 
 - identity/USER.md - Learned user preferences and context
@@ -289,6 +295,56 @@ When user wants to create an agent, write the file to ~/.claude/agents/{name}.md
 }
 
 /**
+ * Tool routing and safety guidance
+ * Ported from Claude Code defaults — critical for correct tool use
+ *
+ * @returns Tool guidance wrapped in XML tags
+ */
+export function getToolGuidance(): string {
+  return `<tool-guidance>
+## Tool Routing
+- Read files with Read, not cat/head/tail
+- Edit files with Edit, not sed/awk — always Read before Edit/Write
+- Create files with Write, not echo/heredoc
+- Search files with Glob, not find/ls
+- Search content with Grep, not grep/rg
+- Run independent tool calls in parallel; chain dependent calls sequentially
+
+## Safety
+- Never modify git config
+- Never force-push, reset --hard, checkout ., clean -f, or branch -D unless explicitly asked
+- Never amend commits unless explicitly asked — after hook failure, create a NEW commit
+- Never skip hooks (--no-verify) unless explicitly asked
+- Confirm before any destructive action (rm -rf, DROP TABLE, kill process)
+- Use HEREDOC for commit messages
+</tool-guidance>`;
+}
+
+/**
+ * Top-of-prompt reinforcement: check memory before acting
+ *
+ * @returns Memory-first bookend wrapped in XML tags
+ */
+export function getMemoryFirstBookend(): string {
+  return `<memory-first>
+BEFORE doing ANY work, check conversation history and memory for prior work on the same topic.
+BEFORE delegating ANY task to a background agent, search for prior work on that topic.
+Duplicate work is a critical failure. If recent work exists, summarize it — don't redo it.
+</memory-first>`;
+}
+
+/**
+ * Bottom-of-prompt reinforcement: restates memory-first rule for recency effect
+ *
+ * @returns Memory-first reminder wrapped in XML tags
+ */
+export function getMemoryFirstReminder(): string {
+  return `<system-reminder>
+REMEMBER: Always search memory and conversation history before doing work or delegating tasks. Never duplicate recent work.
+</system-reminder>`;
+}
+
+/**
  * Get orchestration instructions for background agent delegation
  * Tells Claude it's a fast dispatcher with a ~60s time budget
  *
@@ -308,6 +364,13 @@ Before doing ANY work on a complex request, you MUST:
 3. STOP. Do not do the work. The daemon resumes your session in the background.
 
 If you skip step 1 and try to do the work yourself, you WILL be killed at 60s and the user gets nothing.
+
+### MANDATORY: Search Before Delegating
+
+Before calling start_background_task for ANY research or analysis:
+1. Search conversation history for prior work on the same topic
+2. If recent work exists (within ~30 days), DO NOT delegate — summarize what was already done
+3. Only delegate if the topic is genuinely new or the user explicitly asks for a refresh
 
 ### Requests that REQUIRE start_background_task (non-negotiable):
 - Any "research", "look into", "find out", "deep dive", "analyze"
@@ -571,20 +634,29 @@ export function buildSystemPrompt(): string {
     return readFileSync(bootstrapPath, "utf-8");
   }
 
+  const memoryFirstBookend = getMemoryFirstBookend();
+  const toolGuidance = getToolGuidance();
   const skillReminder = getSkillReminder();
   const agentReminder = getAgentReminder();
   const identity = loadIdentity();
   const instructions = getRetrievalInstructions();
+  const memoryFirstReminder = getMemoryFirstReminder();
 
-  // Skill reminder first, agent reminder second (both folder location reminders grouped together)
-  // Then identity, then instructions
-  return (
-    skillReminder +
-    "\n\n" +
-    agentReminder +
-    "\n\n" +
-    identity +
-    "\n\n" +
-    instructions
-  );
+  // Composition order:
+  // 1. memoryFirstBookend  — top bookend (primacy effect)
+  // 2. toolGuidance        — safety-critical tool routing
+  // 3. skillReminder       — folder location
+  // 4. agentReminder       — folder location
+  // 5. identity            — SOUL/IDENTITY/USER/REMINDERS.md
+  // 6. instructions        — memory/retrieval instructions
+  // 7. memoryFirstReminder — bottom bookend (recency effect)
+  return [
+    memoryFirstBookend,
+    toolGuidance,
+    skillReminder,
+    agentReminder,
+    identity,
+    instructions,
+    memoryFirstReminder,
+  ].join("\n\n");
 }
