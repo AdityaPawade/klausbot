@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 ## Current Position
 
 Phase: 14 of 14 (Testing Framework)
-Plan: 1/4 complete
+Plan: 2/4 complete
 Status: In progress — executing Phase 14 plans
-Last activity: 2026-02-07 — Completed 14-01-PLAN.md (test infrastructure setup)
+Last activity: 2026-02-07 — Completed 14-02-PLAN.md (pure-logic unit tests)
 
-Progress: [██████████████░] 94% (14-01 complete; 14-02 through 14-04 remaining)
+Progress: [██████████████░] 95% (14-01, 14-02 complete; 14-03, 14-04 remaining)
 
 ## Milestone Summary
 
@@ -41,9 +41,9 @@ Progress: [██████████████░] 94% (14-01 complete; 1
 
 **Velocity:**
 
-- Total plans completed: 15 (v1.1)
-- Average duration: 2m 59s
-- Total execution time: 44m 51s
+- Total plans completed: 16 (v1.1)
+- Average duration: 3m 03s
+- Total execution time: 48m 59s
 
 **By Phase:**
 
@@ -56,7 +56,7 @@ Progress: [██████████████░] 94% (14-01 complete; 1
 | 12-heartbeat-system         | 3/3   | 6m 35s  | 2m 12s   |
 | 13.2-subagent-orchestration | 1/1   | 4m 00s  | 4m 00s   |
 | 13.3-infinite-conversation  | 2/2   | 4m 22s  | 2m 11s   |
-| 14-testing-framework        | 1/4   | 3m 09s  | 3m 09s   |
+| 14-testing-framework        | 2/4   | 7m 17s  | 3m 39s   |
 
 _Updated after each plan completion_
 
@@ -114,6 +114,8 @@ _Updated after each plan completion_
 - Test DB: No sqlite-vec or FTS5 in test DB (unit tests only, avoids native addon issues)
 - Vitest globals via vitest.config.ts, not tsconfig.json (tsconfig covers src/ only)
 - Coverage thresholds: 40/30/40/40 initial bar, will increase as coverage grows
+- Deterministic time testing: explicit nowMs values for reproducible schedule tests
+- safeParse for Zod validation tests: check success field, no thrown errors
 
 ### Roadmap Evolution
 
@@ -132,17 +134,16 @@ None. All TypeScript errors resolved (was: drizzle-orm type issue + others).
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 14-01-PLAN.md (test infrastructure setup)
+Stopped at: Completed 14-02-PLAN.md (pure-logic unit tests)
 Resume file: None
 
 ## Next Steps
 
-1. Execute 14-02 — Memory module unit tests
-2. Execute 14-03 — Cron/heartbeat unit tests
-3. Execute 14-04 — Evalite eval suite
-4. v1.1 Production Ready complete
+1. Execute 14-03 — Daemon/gateway integration tests
+2. Execute 14-04 — Evalite eval suite
+3. v1.1 Production Ready complete
 
 ---
 
-_State updated: 2026-02-07 (14-01 complete, test infrastructure in place)_
+_State updated: 2026-02-07 (14-02 complete, 100 pure-logic unit tests added)_
 _v1.1 in progress_
