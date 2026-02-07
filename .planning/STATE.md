@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 ## Current Position
 
 Phase: 14 of 14 (Testing Framework)
-Plan: 0/? planned
-Status: All pre-14 phases complete, Phase 14 not yet planned
-Last activity: 2026-02-07 — Heartbeat chat routing + chatId propagation (13.3 polish)
+Plan: 1/4 complete
+Status: In progress — executing Phase 14 plans
+Last activity: 2026-02-07 — Completed 14-01-PLAN.md (test infrastructure setup)
 
-Progress: [██████████████░] 93% (phases 9–13.3 complete; 14 remaining)
+Progress: [██████████████░] 94% (14-01 complete; 14-02 through 14-04 remaining)
 
 ## Milestone Summary
 
@@ -41,9 +41,9 @@ Progress: [██████████████░] 93% (phases 9–13.3 c
 
 **Velocity:**
 
-- Total plans completed: 14 (v1.1)
-- Average duration: 2m 58s
-- Total execution time: 41m 42s
+- Total plans completed: 15 (v1.1)
+- Average duration: 2m 59s
+- Total execution time: 44m 51s
 
 **By Phase:**
 
@@ -56,6 +56,7 @@ Progress: [██████████████░] 93% (phases 9–13.3 c
 | 12-heartbeat-system         | 3/3   | 6m 35s  | 2m 12s   |
 | 13.2-subagent-orchestration | 1/1   | 4m 00s  | 4m 00s   |
 | 13.3-infinite-conversation  | 2/2   | 4m 22s  | 2m 11s   |
+| 14-testing-framework        | 1/4   | 3m 09s  | 3m 09s   |
 
 _Updated after each plan completion_
 
@@ -110,6 +111,9 @@ _Updated after each plan completion_
 - Retrieval instructions: Assertive "MANDATORY: Search Before Claiming Ignorance" enforcement
 - Heartbeat routing: Single-target delivery (config → in-memory → DB → first approved), not broadcast
 - chatId propagation: Cron jobs and heartbeat pass chatId to queryClaudeCode for per-chat context
+- Test DB: No sqlite-vec or FTS5 in test DB (unit tests only, avoids native addon issues)
+- Vitest globals via vitest.config.ts, not tsconfig.json (tsconfig covers src/ only)
+- Coverage thresholds: 40/30/40/40 initial bar, will increase as coverage grows
 
 ### Roadmap Evolution
 
@@ -128,16 +132,17 @@ None. All TypeScript errors resolved (was: drizzle-orm type issue + others).
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Heartbeat chat routing + chatId propagation complete
+Stopped at: Completed 14-01-PLAN.md (test infrastructure setup)
 Resume file: None
 
 ## Next Steps
 
-1. Plan Phase 14 — Testing framework (final phase of v1.1)
-2. Execute Phase 14 plans
-3. v1.1 Production Ready complete
+1. Execute 14-02 — Memory module unit tests
+2. Execute 14-03 — Cron/heartbeat unit tests
+3. Execute 14-04 — Evalite eval suite
+4. v1.1 Production Ready complete
 
 ---
 
-_State updated: 2026-02-07 (all pre-14 phases complete, heartbeat routing polish done)_
+_State updated: 2026-02-07 (14-01 complete, test infrastructure in place)_
 _v1.1 in progress_
