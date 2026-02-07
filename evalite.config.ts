@@ -1,3 +1,3 @@
-import { defineConfig } from "evalite";
+import { defineConfig } from "evalite/config";
 
 export default defineConfig({});

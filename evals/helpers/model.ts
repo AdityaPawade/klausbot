@@ -1,5 +1,5 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { wrapAISDKModel } from "evalite";
+import { wrapAISDKModel } from "evalite/ai-sdk";
 
 const anthropic = createAnthropic();
 
