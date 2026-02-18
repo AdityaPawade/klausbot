@@ -4,13 +4,15 @@
 
 > **Experimental Software**: This project runs Claude Code with `--dangerously-skip-permissions`, which bypasses safety prompts and allows unrestricted file/command access. The container provides isolation. Use at your own risk.
 
+> **Fork Note**: This is a fork of [thesobercoder/klausbot](https://github.com/thesobercoder/klausbot) with production deployment optimizations. See [Changes from Upstream](#changes-from-upstream) below.
+
 ## Why I Built It
 
 Klausbot is an [OpenClaw](https://github.com/openclaw/openclaw) clone built as a thin wrapper around [Claude Code](https://docs.anthropic.com/en/docs/claude-code). This lets you use your existing Claude Code subscription rather than paying for API credits separately.
 
 ## Philosophy
 
-Klausbot is designed to **run inside a container**. Whether locally or on a remote server, the container is the deployment unit. This provides isolation for Claude Code's unrestricted file access and makes deployment consistent everywhere.
+Klausbot is designed to **run inside a container or as a systemd service**. Whether locally, on a Raspberry Pi, or on a remote server, the deployment unit is flexible. The container provides isolation for Claude Code's unrestricted file access, while systemd offers a lightweight alternative for dedicated hardware.
 
 ## What It Does
 
@@ -42,7 +44,7 @@ Klausbot connects Telegram to Claude through Claude Code. Send a message, get a 
 ### Quick Start
 
 ```bash
-git clone https://github.com/thesobercoder/klausbot.git
+git clone https://github.com/AdityaPawade/klausbot.git
 cd klausbot
 cp .env.example .env
 # Edit .env with TELEGRAM_BOT_TOKEN and CLAUDE_CODE_OAUTH_TOKEN
@@ -298,7 +300,7 @@ If streaming fails, the bot falls back to batch mode automatically.
 
 ### Need more help?
 
-Open an issue on [GitHub Issues](https://github.com/thesobercoder/klausbot/issues).
+Open an issue on [GitHub Issues](https://github.com/AdityaPawade/klausbot/issues) or [upstream](https://github.com/thesobercoder/klausbot/issues).
 
 ## Development
 
@@ -312,6 +314,32 @@ cp .env.example .env
 npm run build
 npm run dev -- daemon
 ```
+
+## Deploying with systemd
+
+For dedicated hardware (e.g. Raspberry Pi) where Docker is overkill:
+
+```bash
+npm install && npm run build
+# Copy the systemd unit and logrotate config
+sudo cp ~/.klausbot/config/systemd/klausbot.service /etc/systemd/system/
+sudo cp ~/.klausbot/config/systemd/klausbot-logrotate /etc/logrotate.d/klausbot
+sudo systemctl daemon-reload
+sudo systemctl enable --now klausbot
+```
+
+Logs go to `~/.klausbot/logs/` with automatic rotation.
+
+## Changes from Upstream
+
+This fork includes the following changes over [thesobercoder/klausbot](https://github.com/thesobercoder/klausbot):
+
+- **System prompt compression** — Retrieval and orchestration instructions reduced by ~50%, lowering per-request token usage without losing functionality
+- **E2BIG crash protection** — System prompts are truncated at 120KB before passing to the CLI, preventing Linux `E2BIG` argument-too-long errors on long conversations
+- **Reduced context budget** — Conversation context injection capped at 80K characters (~20K tokens) instead of 120K, improving response latency on constrained hardware
+- **Removed redundant prompt bookend** — Eliminated the duplicate memory-first reminder at the bottom of the system prompt
+- **Pinned dev dependencies** — Locked `@ai-sdk/anthropic`, `ai`, and `evalite` to exact versions to prevent unexpected breakage
+- **systemd deployment support** — Service unit and logrotate config for running natively without Docker
 
 ## License
 
