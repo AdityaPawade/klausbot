@@ -180,6 +180,18 @@ export async function queryClaudeCode(
       systemPrompt += "\n\n" + options.additionalInstructions;
     }
 
+    // Guard against E2BIG: Linux MAX_ARG_STRLEN is 128KB per argument.
+    // Truncate if the system prompt exceeds 120KB (leaving 8KB margin).
+    const MAX_SYSTEM_PROMPT_BYTES = 120_000;
+    const promptBytes = Buffer.byteLength(systemPrompt, "utf-8");
+    if (promptBytes > MAX_SYSTEM_PROMPT_BYTES) {
+      logger.warn(
+        { promptBytes, limit: MAX_SYSTEM_PROMPT_BYTES },
+        "System prompt exceeds size limit, truncating",
+      );
+      systemPrompt = systemPrompt.slice(0, MAX_SYSTEM_PROMPT_BYTES);
+    }
+
     // Write MCP config to temp file for Claude CLI
     const mcpConfigPath = writeMcpConfigFile();
 

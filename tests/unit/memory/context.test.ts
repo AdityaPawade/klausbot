@@ -51,7 +51,6 @@ import {
   getToolGuidance,
   getOrchestrationInstructions,
   getMemoryFirstBookend,
-  getMemoryFirstReminder,
   buildConversationContext,
   loadIdentity,
   invalidateIdentityCache,
@@ -115,14 +114,6 @@ describe("static instruction functions", () => {
       const result = getMemoryFirstBookend();
       expect(result).toContain("<memory-first>");
       expect(result).toContain("</memory-first>");
-    });
-  });
-
-  describe("getMemoryFirstReminder", () => {
-    it("returns string with system-reminder tag", () => {
-      const result = getMemoryFirstReminder();
-      expect(result).toContain("<system-reminder>");
-      expect(result).toContain("</system-reminder>");
     });
   });
 });
@@ -340,7 +331,6 @@ describe("buildSystemPrompt", () => {
     expect(result).toContain("<skill-folder>");
     expect(result).toContain("<agent-folder>");
     expect(result).toContain("<memory-instructions>");
-    expect(result).toContain("<system-reminder>");
     // Identity content should be present
     expect(result).toContain("Identity content");
   });

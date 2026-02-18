@@ -82,23 +82,23 @@ No active milestone. Run `/gsd:new-milestone` to plan next.
 
 ## Key Decisions
 
-| Decision                          | Rationale                                          | Outcome |
-| --------------------------------- | -------------------------------------------------- | ------- |
-| Claude Code as backend            | Full agentic capabilities, not just chat           | Good    |
-| File-based memory + agentic read  | RLM approach: Claude reads what it needs           | Good    |
-| Self-writable identity files      | Enables self-improvement and evolution             | Good    |
-| SQLite for embeddings             | Replaced JSON file, enables MCP tool access        | Good    |
-| MCP tools for cron/memory         | Typed operations, self-describing                  | Good    |
-| Claude Code hooks                 | Session continuity without full history in context | Good    |
-| Drizzle ORM                       | Schema migrations, type safety                     | Good    |
-| CLI spawner + MCP (not Agent SDK) | Agent SDK query() hung; CLI + MCP reliable         | Good    |
-| Callback streaming (not generator)| Return value access; skip during bootstrap         | Good    |
-| Heartbeat + HEARTBEAT_OK contract | Suppression prevents spam; hot reload via config   | Good    |
-| 120K char context budget          | ~30K tokens via character estimation, no tokenizer | Good    |
-| Thread detection via 30min gaps   | Walk backward through conversation timestamps      | Good    |
-| XML user message wrapping         | Security without full prompt injection framework   | Good    |
-| Descoped Setup/Service/Doctor     | Fork-and-run model doesn't need wizard/service mgmt| Good    |
-| Evalite for LLM evals             | Vitest-based, AI SDK integration, LLM-as-judge    | Good    |
+| Decision                           | Rationale                                           | Outcome |
+| ---------------------------------- | --------------------------------------------------- | ------- |
+| Claude Code as backend             | Full agentic capabilities, not just chat            | Good    |
+| File-based memory + agentic read   | RLM approach: Claude reads what it needs            | Good    |
+| Self-writable identity files       | Enables self-improvement and evolution              | Good    |
+| SQLite for embeddings              | Replaced JSON file, enables MCP tool access         | Good    |
+| MCP tools for cron/memory          | Typed operations, self-describing                   | Good    |
+| Claude Code hooks                  | Session continuity without full history in context  | Good    |
+| Drizzle ORM                        | Schema migrations, type safety                      | Good    |
+| CLI spawner + MCP (not Agent SDK)  | Agent SDK query() hung; CLI + MCP reliable          | Good    |
+| Callback streaming (not generator) | Return value access; skip during bootstrap          | Good    |
+| Heartbeat + HEARTBEAT_OK contract  | Suppression prevents spam; hot reload via config    | Good    |
+| 120K char context budget           | ~30K tokens via character estimation, no tokenizer  | Good    |
+| Thread detection via 30min gaps    | Walk backward through conversation timestamps       | Good    |
+| XML user message wrapping          | Security without full prompt injection framework    | Good    |
+| Descoped Setup/Service/Doctor      | Fork-and-run model doesn't need wizard/service mgmt | Good    |
+| Evalite for LLM evals              | Vitest-based, AI SDK integration, LLM-as-judge      | Good    |
 
 ---
 

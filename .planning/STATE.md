@@ -18,10 +18,10 @@ Progress: v1.0 + v1.1 shipped (64 plans across 21 phases)
 
 ## Milestone History
 
-| Milestone              | Phases | Plans | Shipped    |
-| ---------------------- | ------ | ----- | ---------- |
-| v1.0 MVP               | 12     | 46    | 2026-01-31 |
-| v1.1 Production Ready   | 9      | 18    | 2026-02-09 |
+| Milestone             | Phases | Plans | Shipped    |
+| --------------------- | ------ | ----- | ---------- |
+| v1.0 MVP              | 12     | 46    | 2026-01-31 |
+| v1.1 Production Ready | 9      | 18    | 2026-02-09 |
 
 ## Accumulated Context
 

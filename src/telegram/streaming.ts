@@ -81,6 +81,18 @@ export async function streamClaudeResponse(
     systemPrompt += "\n\n" + options.additionalInstructions;
   }
 
+  // Guard against E2BIG: Linux MAX_ARG_STRLEN is 128KB per argument.
+  // Truncate if the system prompt exceeds 120KB (leaving 8KB margin).
+  const MAX_SYSTEM_PROMPT_BYTES = 120_000;
+  const promptBytes = Buffer.byteLength(systemPrompt, "utf-8");
+  if (promptBytes > MAX_SYSTEM_PROMPT_BYTES) {
+    log.warn(
+      { promptBytes, limit: MAX_SYSTEM_PROMPT_BYTES },
+      "System prompt exceeds size limit, truncating",
+    );
+    systemPrompt = systemPrompt.slice(0, MAX_SYSTEM_PROMPT_BYTES);
+  }
+
   // Wrap prompt in XML tags for security (same as spawner.ts)
   // Reminder ensures text output even when tool-use occurs
   const wrappedPrompt = `<user_message>\n${prompt}\n</user_message>\n<reminder>You MUST include a conversational text response. If you performed any actions (file writes, memory updates, etc.), acknowledge them naturally. NEVER return empty.</reminder>`;
