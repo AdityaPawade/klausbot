@@ -154,6 +154,8 @@ export interface SpawnerOptions {
   rescueThresholdMs?: number;
   /** Called when rescue triggers — receives handle to monitor the still-running process */
   onRescue?: (handle: RescueHandle) => void;
+  /** Inactivity timeout after first activity — resets on each event (default: none) */
+  inactivityTimeoutMs?: number;
 }
 
 const DEFAULT_TIMEOUT = 90000; // 90 seconds — main agent is a fast dispatcher
@@ -326,21 +328,33 @@ export async function queryClaudeCode(
       }, options.rescueThresholdMs);
     }
 
-    // --- Safety timeout (hard kill) ---
-    const safetyTimeoutMs = options.rescueThresholdMs
-      ? timeout // When rescue is enabled, `timeout` is the safety timeout (e.g., 300s)
-      : timeout; // Without rescue, same behavior as before
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      claude.kill("SIGTERM");
+    // --- Activity-based safety timeout ---
+    const inactivityMs = options.inactivityTimeoutMs;
+    let hasActivity = false;
 
-      // Force kill after 5 seconds if SIGTERM doesn't work
+    const killProcess = () => {
+      timedOut = true;
+      const reason = hasActivity ? "inactivity" : "no output";
+      logger.warn(
+        { resultLength: accumulated.length, reason },
+        "Claude timed out, killing process",
+      );
+      claude.kill("SIGTERM");
       setTimeout(() => {
-        if (!claude.killed) {
-          claude.kill("SIGKILL");
-        }
+        if (!claude.killed) claude.kill("SIGKILL");
       }, 5000);
-    }, safetyTimeoutMs);
+    };
+
+    let timeoutId = setTimeout(killProcess, timeout);
+
+    /** Reset timeout on activity — switches to inactivity window after first event */
+    const onActivity = () => {
+      if (timedOut || rescued) return;
+      hasActivity = true;
+      clearTimeout(timeoutId);
+      const nextTimeout = inactivityMs ?? timeout;
+      timeoutId = setTimeout(killProcess, nextTimeout);
+    };
 
     // Parse NDJSON events from stream-json output
     const rl = createInterface({ input: claude.stdout! });
@@ -348,6 +362,9 @@ export async function queryClaudeCode(
     rl.on("line", (line) => {
       try {
         const event = JSON.parse(line);
+
+        // Any parseable NDJSON event counts as activity
+        onActivity();
 
         // Text delta — accumulate response text
         if (event.type === "content_block_delta" && event.delta?.text) {

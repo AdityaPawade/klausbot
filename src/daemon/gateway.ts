@@ -371,7 +371,8 @@ export async function startGateway(): Promise<void> {
   const rescueConfig = getJsonConfig().rescue ?? {
     enabled: true,
     thresholdMs: 75000,
-    safetyTimeoutMs: 300000,
+    safetyTimeoutMs: 600000,
+    inactivityTimeoutMs: 600000,
     maxConcurrent: 1,
     updateIntervalMs: 30000,
   };
@@ -978,6 +979,12 @@ Use this chatId when creating cron jobs or background tasks.
           throttleMs: 500,
         };
 
+        // Build rescue options for streaming path
+        const streamRescueConfig = jsonConfig.rescue;
+        const useStreamRescue = rescueMonitor && streamRescueConfig?.enabled;
+
+        let streamRescueHandle: RescueHandle | null = null;
+
         const streamResult = await streamToTelegram(
           bot,
           msg.chatId,
@@ -989,11 +996,90 @@ Use this chatId when creating cron jobs or background tasks.
             messageThreadId: msg.threading?.messageThreadId,
             chatId: msg.chatId,
             replyToMessageId: msg.threading?.replyToMessageId,
+            timeout: useStreamRescue
+              ? streamRescueConfig.safetyTimeoutMs
+              : undefined,
+            inactivityTimeoutMs: useStreamRescue
+              ? streamRescueConfig.inactivityTimeoutMs
+              : undefined,
+            rescueThresholdMs: useStreamRescue
+              ? streamRescueConfig.thresholdMs
+              : undefined,
+            onRescue: useStreamRescue
+              ? (handle: RescueHandle) => {
+                  streamRescueHandle = handle;
+                }
+              : undefined,
           },
         );
 
         // Stop typing indicator
         clearInterval(typingInterval);
+
+        // Handle rescued streaming response
+        if (streamResult.rescued && streamRescueHandle && rescueMonitor) {
+          queue.complete(msg.id);
+
+          // Send partial text if streaming didn't already show it
+          let sentText = "";
+          if (!streamResult.messageSent && streamResult.result) {
+            await splitAndSend(msg.chatId, streamResult.result, msg.threading);
+            sentText = streamResult.result;
+          } else if (streamResult.messageSent) {
+            sentText = streamResult.result;
+          }
+
+          // Notify user
+          await bot.api.sendMessage(
+            msg.chatId,
+            "<i>Still working on this directly (not a background task) \u2014 I'll send updates as I go.</i>",
+            {
+              parse_mode: "HTML",
+              message_thread_id: msg.threading?.messageThreadId,
+            },
+          );
+
+          // Register with rescue monitor
+          rescueMonitor.register(
+            msg.id,
+            streamRescueHandle,
+            {
+              chatId: msg.chatId,
+              messageThreadId: msg.threading?.messageThreadId,
+              sentText,
+            },
+            jsonConfig.model,
+          );
+
+          const duration = Date.now() - startTime;
+          log.info(
+            {
+              chatId: msg.chatId,
+              queueId: msg.id,
+              duration,
+              rescued: true,
+              streaming: true,
+              partialLength: streamResult.result.length,
+            },
+            "Streaming message rescued, continuing in background",
+          );
+
+          // Invalidate + auto-commit + media errors still needed
+          invalidateIdentityCache();
+          if (mediaErrors.length > 0) {
+            await bot.api.sendMessage(
+              msg.chatId,
+              `Note: Some media could not be processed: ${mediaErrors.join(". ")}`,
+              { message_thread_id: msg.threading?.messageThreadId },
+            );
+          }
+          const committed = await autoCommitChanges();
+          if (committed) {
+            log.info({ queueId: msg.id }, "Auto-committed Claude file changes");
+          }
+
+          return; // Exit — rescue monitor handles the rest
+        }
 
         // Check for background task delegation
         if (backgroundAgentsEnabled) {
@@ -1093,6 +1179,9 @@ Use this chatId when creating cron jobs or background tasks.
       model: jsonConfig.model,
       chatId: msg.chatId,
       timeout: useRescue ? rescueConfig.safetyTimeoutMs : undefined,
+      inactivityTimeoutMs: useRescue
+        ? rescueConfig.inactivityTimeoutMs
+        : undefined,
       rescueThresholdMs: useRescue ? rescueConfig.thresholdMs : undefined,
       onRescue: useRescue
         ? (handle: RescueHandle) => {
@@ -1118,7 +1207,7 @@ Use this chatId when creating cron jobs or background tasks.
       // Notify user that response is still being generated
       await bot.api.sendMessage(
         msg.chatId,
-        "<i>This is taking longer than usual\u2026 I'll send updates as they come.</i>",
+        "<i>Still working on this directly (not a background task) \u2014 I'll send updates as I go.</i>",
         {
           parse_mode: "HTML",
           message_thread_id: msg.threading?.messageThreadId,

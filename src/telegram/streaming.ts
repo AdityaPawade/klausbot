@@ -8,6 +8,7 @@ import {
   writeMcpConfigFile,
   getHooksConfig,
   type ToolUseEntry,
+  type RescueHandle,
 } from "../daemon/index.js";
 
 const log = createChildLogger("streaming");
@@ -48,6 +49,14 @@ export interface StreamOptions {
   signal?: AbortSignal;
   /** Telegram chat ID — propagated to hooks/MCP for per-chat memory isolation */
   chatId?: number;
+  /** If set, resolve promise early with partial text at this threshold (ms) */
+  rescueThresholdMs?: number;
+  /** Called when rescue triggers — receives handle to monitor the still-running process */
+  onRescue?: (handle: RescueHandle) => void;
+  /** Initial safety timeout if no activity at all (default: DEFAULT_TIMEOUT) */
+  timeout?: number;
+  /** Inactivity timeout after first activity — resets on each event (default: none) */
+  inactivityTimeoutMs?: number;
 }
 
 /** Result from streaming Claude response */
@@ -60,6 +69,8 @@ export interface StreamResult {
   toolUse?: ToolUseEntry[];
   /** Whether the streaming function already sent the message to Telegram */
   messageSent?: boolean;
+  /** Whether this response was resolved early via rescue (process still running) */
+  rescued?: boolean;
 }
 
 /**
@@ -126,6 +137,8 @@ export async function streamClaudeResponse(
   // Block Task tool — background work uses --resume via daemon
   args.push("--disallowedTools", "Task,TaskOutput");
 
+  const safetyTimeout = options.timeout ?? DEFAULT_TIMEOUT;
+
   return new Promise((resolve, reject) => {
     // Build environment with chat ID
     const env = { ...process.env };
@@ -144,32 +157,102 @@ export async function streamClaudeResponse(
     let costUsd = 0;
     let sessionId = "";
     let timedOut = false;
+    let rescued = false;
 
     // Tool-use tracking
     const toolUseEntries: ToolUseEntry[] = [];
     let currentToolName = "";
     let currentToolInput = "";
 
-    // Set up timeout (90s — fast dispatcher limit)
-    const timeoutId = setTimeout(() => {
+    // Completion promise for post-rescue monitoring
+    let resolveCompletion: ((result: StreamResult) => void) | null = null;
+    const completionPromise = new Promise<StreamResult>((res) => {
+      resolveCompletion = res;
+    });
+
+    // --- Rescue timer (resolve early, keep process alive) ---
+    let rescueTimerId: ReturnType<typeof setTimeout> | null = null;
+    if (options.rescueThresholdMs && options.onRescue) {
+      rescueTimerId = setTimeout(() => {
+        if (rescued) return;
+        rescued = true;
+
+        log.info(
+          { accumulatedLength: accumulated.length },
+          "Stream rescue threshold reached, resolving early",
+        );
+
+        const partialResult: StreamResult = {
+          result: accumulated,
+          cost_usd: 0,
+          session_id: sessionId,
+          toolUse: toolUseEntries.length > 0 ? [...toolUseEntries] : undefined,
+          rescued: true,
+        };
+
+        // Provide handle for the caller to monitor the still-running process
+        // Adapt RescueHandle shape (expects ClaudeResponse) — wrap StreamResult
+        const handle: RescueHandle = {
+          getAccumulated: () => accumulated,
+          completion: completionPromise.then((sr) => ({
+            result: sr.result,
+            cost_usd: sr.cost_usd,
+            session_id: sr.session_id,
+            duration_ms: 0,
+            is_error: false,
+            toolUse: sr.toolUse,
+          })),
+          sessionId,
+          toolUseSoFar: () => [...toolUseEntries],
+          kill: () => {
+            claude.kill("SIGTERM");
+            setTimeout(() => {
+              if (!claude.killed) claude.kill("SIGKILL");
+            }, 5000);
+          },
+        };
+
+        options.onRescue!(handle);
+        resolve(partialResult);
+      }, options.rescueThresholdMs);
+    }
+
+    // --- Activity-based safety timeout ---
+    // Initial timer: kills if Claude produces NO output at all
+    // Once activity detected: switches to inactivity timer that resets on each event
+    const inactivityMs = options.inactivityTimeoutMs;
+    let hasActivity = false;
+
+    const killProcess = () => {
       timedOut = true;
+      const reason = hasActivity ? "inactivity" : "no output";
       log.warn(
-        { resultLength: accumulated.length },
+        { resultLength: accumulated.length, reason },
         "Stream timed out, killing process",
       );
       claude.kill("SIGTERM");
-      // Force kill if SIGTERM doesn't work after 5s
       setTimeout(() => {
-        if (!claude.killed) {
-          claude.kill("SIGKILL");
-        }
+        if (!claude.killed) claude.kill("SIGKILL");
       }, 5000);
-    }, DEFAULT_TIMEOUT);
+    };
+
+    let timeoutId = setTimeout(killProcess, safetyTimeout);
+
+    /** Reset timeout on activity — switches to inactivity window after first event */
+    const onActivity = () => {
+      if (timedOut || rescued) return;
+      hasActivity = true;
+      clearTimeout(timeoutId);
+      // Use inactivity timeout if configured, otherwise keep initial timeout
+      const nextTimeout = inactivityMs ?? safetyTimeout;
+      timeoutId = setTimeout(killProcess, nextTimeout);
+    };
 
     // Handle abort signal
     if (options.signal) {
       options.signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
+        if (rescueTimerId) clearTimeout(rescueTimerId);
         claude.kill("SIGTERM");
       });
     }
@@ -179,6 +262,9 @@ export async function streamClaudeResponse(
     rl.on("line", (line) => {
       try {
         const event: StreamEvent = JSON.parse(line);
+
+        // Any parseable NDJSON event counts as activity
+        onActivity();
 
         // Text delta events - call onChunk callback
         if (event.type === "content_block_delta" && event.delta?.text) {
@@ -250,8 +336,30 @@ export async function streamClaudeResponse(
 
     rl.on("close", () => {
       clearTimeout(timeoutId);
+      if (rescueTimerId) clearTimeout(rescueTimerId);
 
       const toolUse = toolUseEntries.length > 0 ? toolUseEntries : undefined;
+
+      const finalResult: StreamResult = {
+        result: accumulated,
+        cost_usd: costUsd,
+        session_id: sessionId,
+        toolUse,
+      };
+
+      // Always resolve completionPromise (for rescue monitor)
+      if (resolveCompletion) {
+        resolveCompletion(finalResult);
+      }
+
+      // If already rescued, don't resolve the main promise again
+      if (rescued) {
+        log.info(
+          { resultLength: accumulated.length, cost_usd: costUsd },
+          "Rescued stream completed",
+        );
+        return;
+      }
 
       if (timedOut) {
         const timeoutNotice =
@@ -272,17 +380,13 @@ export async function streamClaudeResponse(
           },
           "Stream completed",
         );
-        resolve({
-          result: accumulated,
-          cost_usd: costUsd,
-          session_id: sessionId,
-          toolUse,
-        });
+        resolve(finalResult);
       }
     });
 
     claude.on("error", (err) => {
       clearTimeout(timeoutId);
+      if (rescueTimerId) clearTimeout(rescueTimerId);
       log.error({ err }, "Stream spawn error");
       reject(err);
     });
@@ -321,6 +425,14 @@ export interface StreamToTelegramOptions {
   chatId?: number;
   /** Reply to this message ID (first chunk) */
   replyToMessageId?: number;
+  /** If set, resolve promise early with partial text at this threshold (ms) */
+  rescueThresholdMs?: number;
+  /** Called when rescue triggers — receives handle to monitor the still-running process */
+  onRescue?: (handle: RescueHandle) => void;
+  /** Safety timeout override (default: DEFAULT_TIMEOUT) */
+  timeout?: number;
+  /** Inactivity timeout after first activity — resets on each event */
+  inactivityTimeoutMs?: number;
 }
 
 /**
@@ -402,9 +514,30 @@ export async function streamToTelegram(
         additionalInstructions: options?.additionalInstructions,
         signal: controller.signal,
         chatId: options?.chatId,
+        rescueThresholdMs: options?.rescueThresholdMs,
+        onRescue: options?.onRescue,
+        timeout: options?.timeout,
+        inactivityTimeoutMs: options?.inactivityTimeoutMs,
       },
       onChunk,
     );
+
+    // Rescued: process still running, return partial to caller
+    if (result.rescued) {
+      // Remove cursor from streaming message if one was sent
+      if (sentMessageId && accumulated.trim()) {
+        try {
+          await bot.api.editMessageText(
+            chatId,
+            sentMessageId,
+            accumulated.slice(0, 4096),
+          );
+        } catch {
+          // Best effort
+        }
+      }
+      return { ...result, messageSent: !!sentMessageId };
+    }
 
     // Final edit: remove cursor, set full formatted text
     if (sentMessageId && !overflowed) {
