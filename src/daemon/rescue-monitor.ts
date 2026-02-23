@@ -59,6 +59,8 @@ interface TrackedProcess {
   model?: string;
   /** Text length at last update */
   lastSentLength: number;
+  /** Tool count at last update (for activity reporting) */
+  lastToolCount: number;
   /** Interval timer for periodic updates */
   intervalId: ReturnType<typeof setInterval>;
   /** Safety kill timer */
@@ -120,6 +122,7 @@ export class RescueMonitor {
       context,
       model,
       lastSentLength,
+      lastToolCount: handle.toolUseSoFar().length,
       intervalId,
       safetyTimerId,
     };
@@ -140,29 +143,99 @@ export class RescueMonitor {
     );
   }
 
-  /** Send new text delta to user */
+  /** Send new text delta or tool activity update to user */
   private async sendDelta(id: string): Promise<void> {
     const tracked = this.tracked.get(id);
     if (!tracked) return;
 
     const current = tracked.handle.getAccumulated();
-    if (current.length <= tracked.lastSentLength) return;
+    const hasNewText = current.length > tracked.lastSentLength;
 
-    const delta = current.slice(tracked.lastSentLength);
-    if (!delta.trim()) return;
+    if (hasNewText) {
+      const delta = current.slice(tracked.lastSentLength);
+      if (!delta.trim()) return;
 
-    // Send delta as a new message (continuation)
+      // Send text delta as a new message
+      try {
+        await this.callbacks.sendMessage(
+          tracked.context.chatId,
+          delta.slice(0, 4096),
+          { messageThreadId: tracked.context.messageThreadId },
+        );
+        tracked.lastSentLength = current.length;
+        tracked.lastToolCount = tracked.handle.toolUseSoFar().length;
+        log.debug({ id, deltaLength: delta.length }, "Sent rescue delta");
+      } catch (err) {
+        log.warn({ err, id }, "Failed to send rescue delta message");
+      }
+      return;
+    }
+
+    // No new text — check for tool activity
+    const tools = tracked.handle.toolUseSoFar();
+    const toolCount = tools.length;
+    if (toolCount <= tracked.lastToolCount) return;
+
+    // Summarize recent tool activity
+    const recentTools = tools.slice(tracked.lastToolCount);
+    const summary = this.summarizeToolActivity(recentTools, toolCount);
+    tracked.lastToolCount = toolCount;
+
     try {
       await this.callbacks.sendMessage(
         tracked.context.chatId,
-        delta.slice(0, 4096),
-        { messageThreadId: tracked.context.messageThreadId },
+        `<i>${summary}</i>`,
+        {
+          messageThreadId: tracked.context.messageThreadId,
+          parseMode: "HTML",
+        },
       );
-      tracked.lastSentLength = current.length;
-      log.debug({ id, deltaLength: delta.length }, "Sent rescue delta");
+      log.debug(
+        { id, toolCount, newTools: recentTools.length },
+        "Sent tool activity update",
+      );
     } catch (err) {
-      log.warn({ err, id }, "Failed to send rescue delta message");
+      log.warn({ err, id }, "Failed to send tool activity update");
     }
+  }
+
+  /** Summarize recent tool activity into a human-readable string */
+  private summarizeToolActivity(
+    recentTools: ToolUseEntry[],
+    totalCount: number,
+  ): string {
+    // Count tool types
+    const counts = new Map<string, number>();
+    for (const tool of recentTools) {
+      const name = this.friendlyToolName(tool.name);
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+
+    // Build summary like "read 3 files, executed 2 commands"
+    const parts: string[] = [];
+    for (const [name, count] of counts) {
+      parts.push(`${name} ×${count}`);
+    }
+
+    const detail = parts.join(", ");
+    return `Still working (${totalCount} tool calls so far: ${detail})`;
+  }
+
+  /** Map Claude tool names to friendly descriptions */
+  private friendlyToolName(name: string): string {
+    const map: Record<string, string> = {
+      Read: "read file",
+      Write: "write file",
+      Edit: "edit file",
+      Bash: "shell command",
+      Glob: "file search",
+      Grep: "text search",
+      WebFetch: "web fetch",
+      WebSearch: "web search",
+      Task: "sub-agent",
+      NotebookEdit: "notebook edit",
+    };
+    return map[name] ?? name;
   }
 
   /** Handle process completion — send remaining text and run post-hooks */
