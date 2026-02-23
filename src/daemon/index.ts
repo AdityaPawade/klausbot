@@ -17,7 +17,17 @@ export type {
   ClaudeResponse,
   SpawnerOptions,
   ToolUseEntry,
+  RescueHandle,
 } from "./spawner.js";
+
+// Re-export rescue monitor
+export { RescueMonitor } from "./rescue-monitor.js";
+export type {
+  RescuedProcess,
+  RescueContext,
+  RescueMonitorCallbacks,
+  RescueMonitorConfig,
+} from "./rescue-monitor.js";
 
 // Re-export transcript recovery for external use
 export { handleTimeout } from "./transcript.js";

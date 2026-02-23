@@ -122,11 +122,27 @@ export interface ClaudeResponse {
   is_error: boolean;
   /** Tool uses performed during the session (captured from stream events) */
   toolUse?: ToolUseEntry[];
+  /** Whether this response was resolved early via rescue (process still running) */
+  rescued?: boolean;
+}
+
+/** Handle for a rescued process — allows monitoring after early resolution */
+export interface RescueHandle {
+  /** Get accumulated text at any point */
+  getAccumulated: () => string;
+  /** Resolves when process actually finishes (after rescue) */
+  completion: Promise<ClaudeResponse>;
+  /** Session ID (may be empty until process completes) */
+  sessionId: string;
+  /** Get tool-use entries collected so far */
+  toolUseSoFar: () => ToolUseEntry[];
+  /** Kill the process */
+  kill: () => void;
 }
 
 /** Options for spawning Claude Code */
 export interface SpawnerOptions {
-  /** Timeout in milliseconds (default: 300000 = 5 min) */
+  /** Timeout in milliseconds (default: 90000 = 90s) */
   timeout?: number;
   /** Model to use (for future /model command) */
   model?: string;
@@ -134,6 +150,10 @@ export interface SpawnerOptions {
   additionalInstructions?: string;
   /** Telegram chat ID — propagated to hooks/MCP for per-chat memory isolation */
   chatId?: number;
+  /** If set, resolve promise early with partial text at this threshold (ms) */
+  rescueThresholdMs?: number;
+  /** Called when rescue triggers — receives handle to monitor the still-running process */
+  onRescue?: (handle: RescueHandle) => void;
 }
 
 const DEFAULT_TIMEOUT = 90000; // 90 seconds — main agent is a fast dispatcher
@@ -245,6 +265,7 @@ export async function queryClaudeCode(
 
     let stderr = "";
     let timedOut = false;
+    let rescued = false;
 
     // NDJSON stream state
     let accumulated = "";
@@ -257,7 +278,58 @@ export async function queryClaudeCode(
     let currentToolName = "";
     let currentToolInput = "";
 
-    // Set up timeout
+    // Completion promise for post-rescue monitoring
+    let resolveCompletion: ((response: ClaudeResponse) => void) | null = null;
+    const completionPromise = new Promise<ClaudeResponse>((res) => {
+      resolveCompletion = res;
+    });
+
+    // --- Rescue timer (resolve early, keep process alive) ---
+    let rescueTimerId: ReturnType<typeof setTimeout> | null = null;
+    if (options.rescueThresholdMs && options.onRescue) {
+      rescueTimerId = setTimeout(() => {
+        if (rescued) return; // Already rescued (shouldn't happen)
+        rescued = true;
+
+        const duration_ms = Date.now() - startTime;
+        logger.info(
+          { duration_ms, accumulatedLength: accumulated.length },
+          "Rescue threshold reached, resolving early",
+        );
+
+        const partialResponse: ClaudeResponse = {
+          result: accumulated,
+          cost_usd: 0,
+          session_id: sessionId,
+          duration_ms,
+          is_error: false,
+          toolUse: toolUseEntries.length > 0 ? [...toolUseEntries] : undefined,
+          rescued: true,
+        };
+
+        // Provide handle for the caller to monitor the still-running process
+        const handle: RescueHandle = {
+          getAccumulated: () => accumulated,
+          completion: completionPromise,
+          sessionId,
+          toolUseSoFar: () => [...toolUseEntries],
+          kill: () => {
+            claude.kill("SIGTERM");
+            setTimeout(() => {
+              if (!claude.killed) claude.kill("SIGKILL");
+            }, 5000);
+          },
+        };
+
+        options.onRescue!(handle);
+        resolve(partialResponse);
+      }, options.rescueThresholdMs);
+    }
+
+    // --- Safety timeout (hard kill) ---
+    const safetyTimeoutMs = options.rescueThresholdMs
+      ? timeout // When rescue is enabled, `timeout` is the safety timeout (e.g., 300s)
+      : timeout; // Without rescue, same behavior as before
     const timeoutId = setTimeout(() => {
       timedOut = true;
       claude.kill("SIGTERM");
@@ -268,7 +340,7 @@ export async function queryClaudeCode(
           claude.kill("SIGKILL");
         }
       }, 5000);
-    }, timeout);
+    }, safetyTimeoutMs);
 
     // Parse NDJSON events from stream-json output
     const rl = createInterface({ input: claude.stdout! });
@@ -358,7 +430,35 @@ export async function queryClaudeCode(
     // Single resolution point: process close
     claude.on("close", (code) => {
       clearTimeout(timeoutId);
+      if (rescueTimerId) clearTimeout(rescueTimerId);
       const duration_ms = Date.now() - startTime;
+
+      const finalResponse: ClaudeResponse = {
+        result: accumulated,
+        cost_usd: costUsd,
+        session_id: sessionId,
+        duration_ms,
+        is_error: isError,
+        toolUse: toolUseEntries.length > 0 ? toolUseEntries : undefined,
+      };
+
+      // Always resolve completionPromise (for rescue monitor)
+      if (resolveCompletion) {
+        resolveCompletion(finalResponse);
+      }
+
+      // If already rescued, don't resolve the main promise again
+      if (rescued) {
+        logger.info(
+          {
+            duration_ms,
+            cost_usd: costUsd,
+            resultLength: accumulated.length,
+          },
+          "Rescued process completed",
+        );
+        return;
+      }
 
       // Handle timeout
       if (timedOut) {
@@ -393,38 +493,30 @@ export async function queryClaudeCode(
         return;
       }
 
-      const response: ClaudeResponse = {
-        result: accumulated,
-        cost_usd: costUsd,
-        session_id: sessionId,
-        duration_ms,
-        is_error: isError,
-        toolUse: toolUseEntries.length > 0 ? toolUseEntries : undefined,
-      };
-
       const truncatedResult =
-        response.result.length > 200
-          ? `${response.result.slice(0, 200)}...`
-          : response.result;
+        finalResponse.result.length > 200
+          ? `${finalResponse.result.slice(0, 200)}...`
+          : finalResponse.result;
       logger.info(
         {
           duration_ms,
-          cost_usd: response.cost_usd,
-          session_id: response.session_id,
-          is_error: response.is_error,
-          resultLength: response.result.length,
+          cost_usd: finalResponse.cost_usd,
+          session_id: finalResponse.session_id,
+          is_error: finalResponse.is_error,
+          resultLength: finalResponse.result.length,
           result: truncatedResult,
           toolUseCount: toolUseEntries.length,
         },
         "Claude Code responded",
       );
 
-      resolve(response);
+      resolve(finalResponse);
     });
 
     // Handle spawn errors (e.g., claude not found)
     claude.on("error", (err) => {
       clearTimeout(timeoutId);
+      if (rescueTimerId) clearTimeout(rescueTimerId);
       const error = `Failed to start Claude: ${err.message}`;
       logger.error({ err }, error);
       reject(new Error(error));

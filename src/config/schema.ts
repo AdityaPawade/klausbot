@@ -79,6 +79,27 @@ export const jsonConfigSchema = z
         enabled: z.boolean().default(true),
       })
       .default({ enabled: true }),
+    /** Rescue-on-timeout configuration for batch path */
+    rescue: z
+      .object({
+        /** Enable rescue mechanism (default: true) */
+        enabled: z.boolean().default(true),
+        /** Time before rescue triggers in ms (30s-120s, default: 75s) */
+        thresholdMs: z.number().min(30000).max(120000).default(75000),
+        /** Hard safety timeout in ms (120s-600s, default: 300s) */
+        safetyTimeoutMs: z.number().min(120000).max(600000).default(300000),
+        /** Max concurrent rescued processes (0-3, default: 1) */
+        maxConcurrent: z.number().min(0).max(3).default(1),
+        /** Interval for sending progress updates in ms (10s-120s, default: 30s) */
+        updateIntervalMs: z.number().min(10000).max(120000).default(30000),
+      })
+      .default({
+        enabled: true,
+        thresholdMs: 75000,
+        safetyTimeoutMs: 300000,
+        maxConcurrent: 1,
+        updateIntervalMs: 30000,
+      }),
   })
   .strict(); // Fail on unknown keys
 

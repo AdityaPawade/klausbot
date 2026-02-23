@@ -24,6 +24,7 @@ const {
 vi.mock("child_process", () => ({ spawn: mockSpawn }));
 vi.mock("../../../src/utils/index.js", () => ({
   createChildLogger: mockCreateChildLogger,
+  markdownToTelegramHtml: (text: string) => text,
 }));
 vi.mock("../../../src/memory/index.js", () => ({
   KLAUSBOT_HOME: "/mock/.klausbot",
@@ -195,8 +196,8 @@ describe("streamClaudeResponse", () => {
       }),
     );
 
-    // Advance past the 90s timeout
-    vi.advanceTimersByTime(91000);
+    // Advance past the 300s timeout
+    vi.advanceTimersByTime(301000);
 
     const result = await promise;
     expect(result.result).toContain("partial");

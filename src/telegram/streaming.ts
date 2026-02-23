@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import { createInterface } from "readline";
 import { Bot } from "grammy";
 import { createChildLogger } from "../utils/index.js";
+import { markdownToTelegramHtml } from "../utils/index.js";
 import { KLAUSBOT_HOME, buildSystemPrompt } from "../memory/index.js";
 import {
   writeMcpConfigFile,
@@ -11,8 +12,8 @@ import {
 
 const log = createChildLogger("streaming");
 
-/** Default timeout for streaming (90s — main agent is a fast dispatcher) */
-const DEFAULT_TIMEOUT = 90000;
+/** Default timeout for streaming (300s — streaming provides live feedback via editMessageText) */
+const DEFAULT_TIMEOUT = 300_000;
 
 /** Streaming configuration matching jsonConfigSchema */
 export interface StreamConfig {
@@ -57,6 +58,8 @@ export interface StreamResult {
   session_id: string;
   /** Tool uses performed during the session */
   toolUse?: ToolUseEntry[];
+  /** Whether the streaming function already sent the message to Telegram */
+  messageSent?: boolean;
 }
 
 /**
@@ -306,8 +309,8 @@ export async function canStreamToChat(
   }
 }
 
-/** Draft ID counter for unique draft identification */
-let draftIdCounter = 0;
+/** Max chars for a single Telegram message — leave margin below 4096 for cursor + parse overhead */
+const EDIT_CHAR_LIMIT = 4000;
 
 /** Options for streaming to Telegram */
 export interface StreamToTelegramOptions {
@@ -316,18 +319,24 @@ export interface StreamToTelegramOptions {
   messageThreadId?: number;
   /** Telegram chat ID — propagated for per-chat memory isolation */
   chatId?: number;
+  /** Reply to this message ID (first chunk) */
+  replyToMessageId?: number;
 }
 
 /**
- * Stream Claude response to Telegram via draft updates.
- * Shows user real-time response generation in a draft bubble.
+ * Stream Claude response to Telegram via sendMessage + editMessageText.
+ * First text chunk sends a real message, subsequent chunks edit it with a ▌ cursor.
+ * Final edit removes the cursor and sets the full formatted response.
+ *
+ * If accumulated text exceeds ~4000 chars during streaming, editing stops.
+ * The caller should use splitAndSend() for the final text in that case.
  *
  * @param bot - grammY Bot instance
  * @param chatId - Telegram chat ID
  * @param prompt - User message to send to Claude
  * @param config - Streaming configuration (throttleMs)
  * @param options - Optional model, instructions, thread ID
- * @returns Final result text and cost
+ * @returns Final result text, cost, and whether message was already sent
  */
 export async function streamToTelegram(
   bot: Bot<any>,
@@ -336,31 +345,56 @@ export async function streamToTelegram(
   config: StreamConfig,
   options?: StreamToTelegramOptions,
 ): Promise<StreamResult> {
-  const draftId = ++draftIdCounter;
   const controller = new AbortController();
 
   let accumulated = "";
+  let sentMessageId: number | null = null;
   let lastUpdateTime = 0;
+  let overflowed = false;
 
-  // Callback for each text chunk - sends throttled draft updates
+  // Callback for each text chunk — sends/edits real messages
   const onChunk = async (text: string): Promise<void> => {
     accumulated += text;
 
+    // Stop editing once we exceed the safe limit
+    if (accumulated.length > EDIT_CHAR_LIMIT) {
+      overflowed = true;
+      return;
+    }
+
     const now = Date.now();
-    if (now - lastUpdateTime >= config.throttleMs) {
+
+    if (!sentMessageId) {
+      // First chunk: send a real message with cursor
       try {
-        await bot.api.sendMessageDraft(chatId, draftId, accumulated, {
+        const msg = await bot.api.sendMessage(chatId, accumulated + " \u258C", {
           message_thread_id: options?.messageThreadId,
+          reply_parameters: options?.replyToMessageId
+            ? { message_id: options.replyToMessageId }
+            : undefined,
         });
+        sentMessageId = msg.message_id;
         lastUpdateTime = now;
       } catch (err) {
-        log.warn({ err, chatId }, "Draft update failed, continuing");
+        log.warn({ err, chatId }, "Failed to send initial streaming message");
+      }
+    } else if (now - lastUpdateTime >= config.throttleMs) {
+      // Subsequent chunks: edit existing message (throttled)
+      try {
+        await bot.api.editMessageText(
+          chatId,
+          sentMessageId,
+          accumulated + " \u258C",
+        );
+        lastUpdateTime = now;
+      } catch (err) {
+        // Rate limit or network error — next cycle will retry
+        log.debug({ err, chatId }, "Edit throttled or failed, continuing");
       }
     }
   };
 
   try {
-    // Call streamClaudeResponse with callback
     const result = await streamClaudeResponse(
       prompt,
       {
@@ -372,14 +406,34 @@ export async function streamToTelegram(
       onChunk,
     );
 
-    // Send final draft update (ensures latest content shown)
-    await bot.api
-      .sendMessageDraft(chatId, draftId, result.result, {
-        message_thread_id: options?.messageThreadId,
-      })
-      .catch(() => {});
+    // Final edit: remove cursor, set full formatted text
+    if (sentMessageId && !overflowed) {
+      try {
+        const finalHtml = markdownToTelegramHtml(result.result);
+        // Only edit if text fits in a single message
+        if (finalHtml.length <= 4096) {
+          await bot.api.editMessageText(chatId, sentMessageId, finalHtml, {
+            parse_mode: "HTML",
+          });
+          return { ...result, messageSent: true };
+        }
+      } catch (err) {
+        log.warn({ err, chatId }, "Final edit failed, will splitAndSend");
+      }
+    }
 
-    return result;
+    // If we sent a message but need to splitAndSend the final version,
+    // delete the partial streaming message first
+    if (sentMessageId) {
+      try {
+        await bot.api.deleteMessage(chatId, sentMessageId);
+      } catch {
+        // Best effort — message may already be gone
+      }
+    }
+
+    // messageSent = false → caller should splitAndSend the full result
+    return { ...result, messageSent: false };
   } catch (err) {
     controller.abort();
 

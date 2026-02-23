@@ -12,6 +12,11 @@ import {
   spawnBackgroundAgent,
   type ToolUseEntry,
 } from "./index.js";
+import {
+  RescueMonitor,
+  type RescueMonitorCallbacks,
+} from "./rescue-monitor.js";
+import type { RescueHandle } from "./spawner.js";
 import { getJsonConfig } from "../config/index.js";
 import type { QueuedMessage, ThreadingContext } from "./queue.js";
 import {
@@ -73,6 +78,7 @@ let queue: MessageQueue;
 let isProcessing = false;
 let shouldStop = false;
 let stopTaskWatcher: (() => void) | null = null;
+let rescueMonitor: RescueMonitor | null = null;
 
 /** Most recently active chat — used by heartbeat for target resolution */
 let lastActiveChatId: number | null = null;
@@ -360,6 +366,68 @@ export async function startGateway(): Promise<void> {
     },
   });
   log.info("Background task watcher initialized");
+
+  // Initialize rescue monitor for batch path timeout recovery
+  const rescueConfig = getJsonConfig().rescue ?? {
+    enabled: true,
+    thresholdMs: 75000,
+    safetyTimeoutMs: 300000,
+    maxConcurrent: 1,
+    updateIntervalMs: 30000,
+  };
+
+  if (rescueConfig.enabled) {
+    const rescueCallbacks: RescueMonitorCallbacks = {
+      sendMessage: async (chatId, text, opts) => {
+        try {
+          await bot.api.sendMessage(chatId, text, {
+            parse_mode: opts?.parseMode as "HTML" | undefined,
+            message_thread_id: opts?.messageThreadId,
+          });
+        } catch {
+          // HTML parse failed — strip tags and send as plain text
+          try {
+            await bot.api.sendMessage(chatId, text.replace(/<[^>]*>/g, ""), {
+              message_thread_id: opts?.messageThreadId,
+            });
+          } catch {
+            // Give up silently
+          }
+        }
+      },
+      onComplete: async (chatId, response, model) => {
+        // Run same post-hooks as normal completion
+        const backgroundAgentsEnabled =
+          getJsonConfig().subagents?.enabled ?? true;
+        if (backgroundAgentsEnabled) {
+          maybeSpawnBackgroundAgent(
+            response.toolUse,
+            response.session_id,
+            chatId,
+            model,
+          );
+        }
+        invalidateIdentityCache();
+        const committed = await autoCommitChanges();
+        if (committed) {
+          log.info("Auto-committed changes from rescued process");
+        }
+      },
+    };
+
+    rescueMonitor = new RescueMonitor(rescueCallbacks, {
+      maxConcurrent: rescueConfig.maxConcurrent,
+      updateIntervalMs: rescueConfig.updateIntervalMs,
+      safetyTimeoutMs: rescueConfig.safetyTimeoutMs,
+    });
+    log.info(
+      {
+        thresholdMs: rescueConfig.thresholdMs,
+        safetyTimeoutMs: rescueConfig.safetyTimeoutMs,
+      },
+      "Rescue monitor initialized",
+    );
+  }
 
   // Register skill commands in Telegram menu
   await registerSkillCommands(bot);
@@ -682,6 +750,12 @@ export async function stopGateway(): Promise<void> {
     stopTaskWatcher = null;
   }
 
+  // Stop rescue monitor
+  if (rescueMonitor) {
+    rescueMonitor.shutdown();
+    rescueMonitor = null;
+  }
+
   // Close database connection
   closeDb();
 
@@ -914,6 +988,7 @@ Use this chatId when creating cron jobs or background tasks.
             additionalInstructions,
             messageThreadId: msg.threading?.messageThreadId,
             chatId: msg.chatId,
+            replyToMessageId: msg.threading?.replyToMessageId,
           },
         );
 
@@ -933,8 +1008,10 @@ Use this chatId when creating cron jobs or background tasks.
         // Mark as complete
         queue.complete(msg.id);
 
-        // Send final message (replaces draft in UI)
-        if (streamResult.result) {
+        // Send final message — skip if streaming already delivered it
+        if (streamResult.messageSent) {
+          // Message already sent and formatted via editMessageText
+        } else if (streamResult.result) {
           await splitAndSend(msg.chatId, streamResult.result, msg.threading);
         } else if (streamResult.toolUse && streamResult.toolUse.length > 0) {
           // Empty text but tool-use happened — retry with context
@@ -1005,14 +1082,74 @@ Use this chatId when creating cron jobs or background tasks.
     }
 
     // === BATCH PATH (existing code) ===
+    // Build rescue options if rescue monitor is active
+    const rescueConfig = jsonConfig.rescue;
+    const useRescue = rescueMonitor && rescueConfig?.enabled;
+
+    let rescueHandle: RescueHandle | null = null;
+
     const response = await queryClaudeCode(effectiveText, {
       additionalInstructions,
       model: jsonConfig.model,
       chatId: msg.chatId,
+      timeout: useRescue ? rescueConfig.safetyTimeoutMs : undefined,
+      rescueThresholdMs: useRescue ? rescueConfig.thresholdMs : undefined,
+      onRescue: useRescue
+        ? (handle: RescueHandle) => {
+            rescueHandle = handle;
+          }
+        : undefined,
     });
 
     // Stop typing indicator
     clearInterval(typingInterval);
+
+    // Handle rescued response — send partial, register with monitor, unblock queue
+    if (response.rescued && rescueHandle && rescueMonitor) {
+      queue.complete(msg.id);
+
+      // Send partial text accumulated so far
+      let sentText = "";
+      if (response.result) {
+        await splitAndSend(msg.chatId, response.result, msg.threading);
+        sentText = response.result;
+      }
+
+      // Notify user that response is still being generated
+      await bot.api.sendMessage(
+        msg.chatId,
+        "<i>This is taking longer than usual\u2026 I'll send updates as they come.</i>",
+        {
+          parse_mode: "HTML",
+          message_thread_id: msg.threading?.messageThreadId,
+        },
+      );
+
+      // Register with rescue monitor for continued tracking
+      rescueMonitor.register(
+        msg.id,
+        rescueHandle,
+        {
+          chatId: msg.chatId,
+          messageThreadId: msg.threading?.messageThreadId,
+          sentText,
+        },
+        jsonConfig.model,
+      );
+
+      const duration = Date.now() - startTime;
+      log.info(
+        {
+          chatId: msg.chatId,
+          queueId: msg.id,
+          duration,
+          rescued: true,
+          partialLength: response.result.length,
+        },
+        "Message rescued, continuing in background",
+      );
+      return;
+    }
 
     // Check for background task delegation
     if (backgroundAgentsEnabled) {
