@@ -88,6 +88,17 @@ let shouldStop = false;
 let stopTaskWatcher: (() => void) | null = null;
 let rescueMonitor: RescueMonitor | null = null;
 
+/** Pending failed messages awaiting user Retry/Dismiss */
+const failedMessages = new Map<
+  string,
+  {
+    chatId: number;
+    text: string;
+    threading?: ThreadingContext;
+    createdAt: number;
+  }
+>();
+
 /** Most recently active chat — used by heartbeat for target resolution */
 let lastActiveChatId: number | null = null;
 
@@ -98,6 +109,50 @@ export function getLastActiveChatId(): number | null {
 
 /** Bot instance (loaded dynamically after config validation) */
 let bot: Awaited<typeof import("../telegram/index.js")>["bot"];
+
+/**
+ * Send a Retry/Dismiss inline keyboard for a failed message.
+ * Prunes entries older than 1 hour to prevent unbounded growth.
+ */
+async function sendRetryKeyboard(
+  chatId: number,
+  text: string,
+  reason: string,
+  opts?: { messageThreadId?: number },
+): Promise<void> {
+  // Prune entries older than 1 hour
+  const ONE_HOUR = 3_600_000;
+  for (const [id, entry] of failedMessages) {
+    if (Date.now() - entry.createdAt > ONE_HOUR) failedMessages.delete(id);
+  }
+
+  const retryId = randomUUID().slice(0, 8);
+  failedMessages.set(retryId, {
+    chatId,
+    text,
+    threading: opts?.messageThreadId
+      ? { messageThreadId: opts.messageThreadId }
+      : undefined,
+    createdAt: Date.now(),
+  });
+
+  const desc = text.length > 80 ? text.slice(0, 77) + "..." : text;
+  const msg =
+    `Your message couldn't be completed:\n\n` +
+    `<b>${escapeHtml(desc)}</b>\n` +
+    `Reason: ${escapeHtml(reason)}\n\n` +
+    `Would you like to retry?`;
+
+  const keyboard = new InlineKeyboard()
+    .text("Retry", `failed:retry:${retryId}`)
+    .text("Dismiss", `failed:dismiss:${retryId}`);
+
+  await bot.api.sendMessage(chatId, msg, {
+    parse_mode: "HTML",
+    reply_markup: keyboard,
+    message_thread_id: opts?.messageThreadId,
+  });
+}
 
 /**
  * Pre-process media attachments before Claude query
@@ -433,34 +488,70 @@ export async function startGateway(): Promise<void> {
     }
   }
 
-  // Handle orphan recovery callback queries (resume/dismiss)
+  // Handle orphan recovery and failed message callback queries
   bot.on("callback_query:data", async (ctx) => {
     const data = ctx.callbackQuery.data;
-    if (!data.startsWith("orphan:")) return;
 
-    const [, action, taskId] = data.split(":");
-    if (!action || !taskId) return;
+    // --- Orphan recovery ---
+    if (data.startsWith("orphan:")) {
+      const [, action, taskId] = data.split(":");
+      if (!action || !taskId) return;
 
-    if (action === "resume") {
-      // Re-queue the task description as a new message
-      const tasks = getActiveTasks();
-      const task = tasks.find((t) => t.id === taskId);
-      if (task) {
-        queue.add(Number(task.chatId), task.description);
+      if (action === "resume") {
+        const tasks = getActiveTasks();
+        const task = tasks.find((t) => t.id === taskId);
+        if (task) {
+          queue.add(Number(task.chatId), task.description);
+          dismissActiveTask(taskId);
+          await ctx.answerCallbackQuery({ text: "Task re-queued" });
+          await ctx.editMessageText(
+            `Retrying: ${task.description.length > 60 ? task.description.slice(0, 57) + "..." : task.description}`,
+          );
+          log.info({ taskId }, "User chose to retry orphaned task");
+        } else {
+          await ctx.answerCallbackQuery({ text: "Task no longer exists" });
+        }
+      } else if (action === "dismiss") {
         dismissActiveTask(taskId);
-        await ctx.answerCallbackQuery({ text: "Task re-queued" });
-        await ctx.editMessageText(
-          `Retrying: ${task.description.length > 60 ? task.description.slice(0, 57) + "..." : task.description}`,
-        );
-        log.info({ taskId }, "User chose to retry orphaned task");
-      } else {
-        await ctx.answerCallbackQuery({ text: "Task no longer exists" });
+        await ctx.answerCallbackQuery({ text: "Task dismissed" });
+        await ctx.editMessageText("Dismissed orphaned task.");
+        log.info({ taskId }, "User dismissed orphaned task");
       }
-    } else if (action === "dismiss") {
-      dismissActiveTask(taskId);
-      await ctx.answerCallbackQuery({ text: "Task dismissed" });
-      await ctx.editMessageText("Dismissed orphaned task.");
-      log.info({ taskId }, "User dismissed orphaned task");
+      return;
+    }
+
+    // --- Failed message retry ---
+    if (data.startsWith("failed:")) {
+      const [, action, retryId] = data.split(":");
+      if (!action || !retryId) return;
+
+      if (action === "retry") {
+        const entry = failedMessages.get(retryId);
+        if (entry) {
+          queue.add(entry.chatId, entry.text, undefined, entry.threading);
+          failedMessages.delete(retryId);
+          await ctx.answerCallbackQuery({ text: "Message re-queued" });
+          const desc =
+            entry.text.length > 60
+              ? entry.text.slice(0, 57) + "..."
+              : entry.text;
+          await ctx.editMessageText(`Retrying: ${desc}`);
+          log.info(
+            { retryId, chatId: entry.chatId },
+            "User retried failed message",
+          );
+        } else {
+          await ctx.answerCallbackQuery({
+            text: "Retry expired — please resend your message",
+          });
+        }
+      } else if (action === "dismiss") {
+        failedMessages.delete(retryId);
+        await ctx.answerCallbackQuery({ text: "Dismissed" });
+        await ctx.editMessageText("Dismissed.");
+        log.info({ retryId }, "User dismissed failed message");
+      }
+      return;
     }
   });
 
@@ -509,6 +600,13 @@ export async function startGateway(): Promise<void> {
         const committed = await autoCommitChanges();
         if (committed) {
           log.info("Auto-committed changes from rescued process");
+        }
+      },
+      onFailure: async (chatId, originalMessage, reason, opts) => {
+        try {
+          await sendRetryKeyboard(chatId, originalMessage, reason, opts);
+        } catch (err) {
+          log.error({ err, chatId }, "Failed to send retry keyboard");
         }
       },
     };
@@ -1163,6 +1261,7 @@ Use this chatId when creating cron jobs or background tasks.
               chatId: msg.chatId,
               messageThreadId: msg.threading?.messageThreadId,
               sentText,
+              originalMessage: effectiveText,
             },
             jsonConfig.model,
           );
@@ -1338,6 +1437,7 @@ Use this chatId when creating cron jobs or background tasks.
           chatId: msg.chatId,
           messageThreadId: msg.threading?.messageThreadId,
           sentText,
+          originalMessage: effectiveText,
         },
         jsonConfig.model,
       );
@@ -1459,15 +1559,23 @@ Use this chatId when creating cron jobs or background tasks.
     const category = categorizeError(error);
     const userMessage = `Error (${category}): ${getBriefDescription(error)}`;
 
-    // Send error to user
-    await bot.api
-      .sendMessage(msg.chatId, userMessage, {
+    // Send error to user — fall back to retry keyboard if send fails
+    try {
+      await bot.api.sendMessage(msg.chatId, userMessage, {
         message_thread_id: msg.threading?.messageThreadId,
         reply_parameters: msg.threading?.replyToMessageId
           ? { message_id: msg.threading.replyToMessageId }
           : undefined,
-      })
-      .catch(() => {});
+      });
+    } catch {
+      try {
+        await sendRetryKeyboard(msg.chatId, msg.text, category, {
+          messageThreadId: msg.threading?.messageThreadId,
+        });
+      } catch (retryErr) {
+        log.error({ retryErr, chatId: msg.chatId }, "Cannot reach user at all");
+      }
+    }
 
     // Mark as failed
     queue.fail(msg.id, error.message);

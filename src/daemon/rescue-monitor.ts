@@ -23,6 +23,8 @@ export interface RescueContext {
   messageThreadId?: number;
   /** Text already sent to user at rescue time */
   sentText: string;
+  /** Original user message text — used for retry on failure */
+  originalMessage: string;
 }
 
 /** Callbacks for rescue monitor to interact with the system */
@@ -38,6 +40,13 @@ export interface RescueMonitorCallbacks {
     chatId: number,
     response: ClaudeResponse,
     model?: string,
+  ) => Promise<void>;
+  /** Called when a rescued process fails — gateway sends retry keyboard */
+  onFailure: (
+    chatId: number,
+    originalMessage: string,
+    reason: string,
+    opts?: { messageThreadId?: number },
   ) => Promise<void>;
 }
 
@@ -132,8 +141,23 @@ export class RescueMonitor {
     // Watch for completion
     handle.completion
       .then((response) => this.handleCompletion(id, response))
-      .catch((err) => {
+      .catch(async (err) => {
         log.error({ err, id }, "Rescued process completion error");
+        const t = this.tracked.get(id);
+        if (t) {
+          const reason =
+            err instanceof Error ? err.message : "Process failed unexpectedly";
+          try {
+            await this.callbacks.onFailure(
+              t.context.chatId,
+              t.context.originalMessage,
+              reason,
+              { messageThreadId: t.context.messageThreadId },
+            );
+          } catch (failErr) {
+            log.error({ failErr, id }, "Failed to send failure notification");
+          }
+        }
         this.cleanup(id);
       });
 
@@ -280,6 +304,21 @@ export class RescueMonitor {
           log.error({ err, id }, "Failed to send final rescue text");
         }
       }
+    } else if (tracked.lastSentLength === 0 && !response.result.trim()) {
+      // Nothing was ever sent to the user — offer retry
+      log.warn({ id }, "Rescued process produced empty output");
+      try {
+        await this.callbacks.onFailure(
+          tracked.context.chatId,
+          tracked.context.originalMessage,
+          "Process completed with no output",
+          { messageThreadId: tracked.context.messageThreadId },
+        );
+      } catch (err) {
+        log.error({ err, id }, "Failed to send failure notification");
+      }
+      this.cleanup(id);
+      return;
     }
 
     // Run post-completion hooks
@@ -296,7 +335,7 @@ export class RescueMonitor {
     this.cleanup(id);
   }
 
-  /** Evict a tracked process — kill and notify user */
+  /** Evict a tracked process — kill and offer retry */
   private evict(id: string, reason: string): void {
     const tracked = this.tracked.get(id);
     if (!tracked) return;
@@ -304,10 +343,17 @@ export class RescueMonitor {
     tracked.handle.kill();
 
     this.callbacks
-      .sendMessage(tracked.context.chatId, `[${reason}]`, {
-        messageThreadId: tracked.context.messageThreadId,
-      })
-      .catch(() => {});
+      .onFailure(
+        tracked.context.chatId,
+        tracked.context.originalMessage,
+        reason,
+        {
+          messageThreadId: tracked.context.messageThreadId,
+        },
+      )
+      .catch((err) => {
+        log.error({ err, id }, "Failed to send eviction failure notification");
+      });
 
     this.cleanup(id);
   }
