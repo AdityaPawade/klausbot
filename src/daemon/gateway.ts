@@ -25,6 +25,7 @@ import {
   handleStartCommand,
   getPairingStore,
 } from "../pairing/index.js";
+import { InlineKeyboard } from "grammy";
 import { existsSync, writeFileSync } from "fs";
 import { join } from "path";
 import { KLAUSBOT_HOME } from "../memory/home.js";
@@ -33,6 +34,7 @@ import {
   sendLongMessage,
   markdownToTelegramHtml,
   splitTelegramMessage,
+  escapeHtml,
 } from "../utils/index.js";
 import { autoCommitChanges } from "../utils/git.js";
 import {
@@ -58,7 +60,13 @@ import {
   shouldCollectNote,
   getNoteCollectionInstructions,
 } from "../heartbeat/index.js";
-import { startTaskWatcher } from "./task-watcher.js";
+import {
+  startTaskWatcher,
+  getActiveTasks,
+  markTaskFailed,
+  dismissActiveTask,
+  timeAgo,
+} from "./task-watcher.js";
 import {
   MediaAttachment,
   transcribeAudio,
@@ -367,6 +375,95 @@ export async function startGateway(): Promise<void> {
   });
   log.info("Background task watcher initialized");
 
+  // Recover orphaned background tasks (tasks stuck in active/ from previous crash)
+  const orphanedTasks = getActiveTasks().sort(
+    (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+  );
+
+  if (orphanedTasks.length > 0) {
+    log.info(
+      { count: orphanedTasks.length },
+      "Found orphaned background tasks from previous session",
+    );
+
+    const latest = orphanedTasks[0];
+    const older = orphanedTasks.slice(1);
+
+    // Mark older orphans as failed immediately (task-watcher will notify)
+    for (const task of older) {
+      markTaskFailed(
+        task.id,
+        "Task was interrupted by a daemon restart and could not be recovered.",
+      );
+    }
+
+    // Prompt user about the most recent orphaned task
+    const ago = timeAgo(latest.startedAt);
+    const desc =
+      latest.description.length > 80
+        ? latest.description.slice(0, 77) + "..."
+        : latest.description;
+    const promptMsg =
+      `A background task was interrupted by a restart:\n\n` +
+      `<b>${escapeHtml(desc)}</b>\n` +
+      `Started: ${ago}\n\n` +
+      `Would you like to retry this task?`;
+
+    const keyboard = new InlineKeyboard()
+      .text("Retry", `orphan:resume:${latest.id}`)
+      .text("Dismiss", `orphan:dismiss:${latest.id}`);
+
+    try {
+      await bot.api.sendMessage(latest.chatId, promptMsg, {
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      });
+      log.info(
+        { taskId: latest.id, chatId: latest.chatId },
+        "Sent orphan recovery prompt to user",
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error(
+        { taskId: latest.id, err: msg },
+        "Failed to send orphan prompt",
+      );
+      // If we can't reach the user, mark it failed
+      markTaskFailed(latest.id, "Task was interrupted by a daemon restart.");
+    }
+  }
+
+  // Handle orphan recovery callback queries (resume/dismiss)
+  bot.on("callback_query:data", async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    if (!data.startsWith("orphan:")) return;
+
+    const [, action, taskId] = data.split(":");
+    if (!action || !taskId) return;
+
+    if (action === "resume") {
+      // Re-queue the task description as a new message
+      const tasks = getActiveTasks();
+      const task = tasks.find((t) => t.id === taskId);
+      if (task) {
+        queue.add(Number(task.chatId), task.description);
+        dismissActiveTask(taskId);
+        await ctx.answerCallbackQuery({ text: "Task re-queued" });
+        await ctx.editMessageText(
+          `Retrying: ${task.description.length > 60 ? task.description.slice(0, 57) + "..." : task.description}`,
+        );
+        log.info({ taskId }, "User chose to retry orphaned task");
+      } else {
+        await ctx.answerCallbackQuery({ text: "Task no longer exists" });
+      }
+    } else if (action === "dismiss") {
+      dismissActiveTask(taskId);
+      await ctx.answerCallbackQuery({ text: "Task dismissed" });
+      await ctx.editMessageText("Dismissed orphaned task.");
+      log.info({ taskId }, "User dismissed orphaned task");
+    }
+  });
+
   // Initialize rescue monitor for batch path timeout recovery
   const rescueConfig = getJsonConfig().rescue ?? {
     enabled: true,
@@ -476,17 +573,36 @@ export async function startGateway(): Promise<void> {
     const store = getPairingStore();
     const isApproved = store.isApproved(chatId);
 
-    const statusMsg = [
+    // Get active/orphaned background tasks (latest 5)
+    const activeTasks = getActiveTasks()
+      .sort(
+        (a, b) =>
+          new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+      )
+      .slice(0, 5);
+
+    const lines = [
       "*Queue Status*",
       `Pending: ${queueStats.pending}`,
       `Processing: ${queueStats.processing}`,
       `Failed: ${queueStats.failed}`,
-      "",
-      `*Your Status*`,
-      `Approved: ${isApproved ? "Yes" : "No"}`,
-    ].join("\n");
+    ];
 
-    await ctx.reply(statusMsg, { parse_mode: "Markdown" });
+    if (activeTasks.length > 0) {
+      lines.push("", `*Background Tasks* (${activeTasks.length} active)`);
+      for (const task of activeTasks) {
+        const ago = timeAgo(task.startedAt);
+        const desc =
+          task.description.length > 60
+            ? task.description.slice(0, 57) + "..."
+            : task.description;
+        lines.push(`• ${desc} (${ago})`);
+      }
+    }
+
+    lines.push("", `*Your Status*`, `Approved: ${isApproved ? "Yes" : "No"}`);
+
+    await ctx.reply(lines.join("\n"), { parse_mode: "Markdown" });
   });
 
   bot.command("help", async (ctx: MyContext) => {

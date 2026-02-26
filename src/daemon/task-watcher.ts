@@ -36,6 +36,8 @@ export interface BackgroundTask {
   summary?: string;
   artifacts?: string[];
   error?: string;
+  /** Session ID from the Claude session that spawned this task (for resume) */
+  sessionId?: string;
 }
 
 export interface TaskWatcherOptions {
@@ -252,4 +254,70 @@ export function getActiveTasks(): BackgroundTask[] {
  */
 export function getActiveTaskCount(chatId: string): number {
   return getActiveTasks().filter((t) => t.chatId === chatId).length;
+}
+
+/**
+ * Move an active task to completed with failed status.
+ * Used to reap orphaned tasks on startup.
+ */
+export function markTaskFailed(taskId: string, error: string): void {
+  ensureDirectories();
+
+  const activePath = path.join(ACTIVE_DIR, `${taskId}.json`);
+  if (!fs.existsSync(activePath)) return;
+
+  try {
+    const content = fs.readFileSync(activePath, "utf-8");
+    const task: BackgroundTask = JSON.parse(content);
+
+    const completedData = {
+      ...task,
+      completedAt: new Date().toISOString(),
+      status: "failed" as const,
+      error,
+    };
+
+    const completedPath = path.join(COMPLETED_DIR, `${taskId}.json`);
+    fs.writeFileSync(completedPath, JSON.stringify(completedData, null, 2));
+    fs.unlinkSync(activePath);
+
+    logger.info({ taskId, error }, "Marked orphaned task as failed");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error({ taskId, err: msg }, "Failed to mark task as failed");
+  }
+}
+
+/**
+ * Remove an active task file without creating a completion record.
+ * Used when user dismisses an orphaned task.
+ */
+export function dismissActiveTask(taskId: string): void {
+  ensureDirectories();
+
+  const activePath = path.join(ACTIVE_DIR, `${taskId}.json`);
+  if (!fs.existsSync(activePath)) return;
+
+  try {
+    fs.unlinkSync(activePath);
+    logger.info({ taskId }, "Dismissed orphaned task");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error({ taskId, err: msg }, "Failed to dismiss task");
+  }
+}
+
+/**
+ * Format a relative time string like "2h ago" or "3d ago"
+ */
+export function timeAgo(isoDate: string): string {
+  const ms = Date.now() - new Date(isoDate).getTime();
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }

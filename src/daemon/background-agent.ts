@@ -113,6 +113,7 @@ export function spawnBackgroundAgent(options: BackgroundAgentOptions): void {
     chatId: String(chatId),
     description,
     startedAt: new Date().toISOString(),
+    sessionId,
   };
   writeFileSync(activeTaskPath, JSON.stringify(taskData, null, 2));
   log.info(
