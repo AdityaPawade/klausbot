@@ -119,7 +119,7 @@ export class RescueMonitor {
       });
     }, this.config.updateIntervalMs);
 
-    // Safety kill timer
+    // Activity-based safety timer — resets whenever tool/text progress is detected
     const safetyTimerId = setTimeout(() => {
       log.warn({ id }, "Safety timeout reached, killing rescued process");
       this.evict(id, "Safety timeout reached");
@@ -167,6 +167,18 @@ export class RescueMonitor {
     );
   }
 
+  /** Reset the safety timer for a tracked process (called on detected activity) */
+  private resetSafetyTimer(tracked: TrackedProcess): void {
+    clearTimeout(tracked.safetyTimerId);
+    tracked.safetyTimerId = setTimeout(() => {
+      log.warn(
+        { id: tracked.id },
+        "Safety timeout reached, killing rescued process",
+      );
+      this.evict(tracked.id, "Safety timeout reached");
+    }, this.config.safetyTimeoutMs);
+  }
+
   /** Send new text delta or tool activity update to user */
   private async sendDelta(id: string): Promise<void> {
     const tracked = this.tracked.get(id);
@@ -174,6 +186,13 @@ export class RescueMonitor {
 
     const current = tracked.handle.getAccumulated();
     const hasNewText = current.length > tracked.lastSentLength;
+    const tools = tracked.handle.toolUseSoFar();
+    const hasNewTools = tools.length > tracked.lastToolCount;
+
+    // Any progress (text or tools) resets the safety timer
+    if (hasNewText || hasNewTools) {
+      this.resetSafetyTimer(tracked);
+    }
 
     if (hasNewText) {
       const delta = current.slice(tracked.lastSentLength);
@@ -187,7 +206,7 @@ export class RescueMonitor {
           { messageThreadId: tracked.context.messageThreadId },
         );
         tracked.lastSentLength = current.length;
-        tracked.lastToolCount = tracked.handle.toolUseSoFar().length;
+        tracked.lastToolCount = tools.length;
         log.debug({ id, deltaLength: delta.length }, "Sent rescue delta");
       } catch (err) {
         log.warn({ err, id }, "Failed to send rescue delta message");
@@ -196,7 +215,6 @@ export class RescueMonitor {
     }
 
     // No new text — check for tool activity
-    const tools = tracked.handle.toolUseSoFar();
     const toolCount = tools.length;
     if (toolCount <= tracked.lastToolCount) return;
 

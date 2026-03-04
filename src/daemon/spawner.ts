@@ -347,9 +347,10 @@ export async function queryClaudeCode(
 
     let timeoutId = setTimeout(killProcess, timeout);
 
-    /** Reset timeout on activity — switches to inactivity window after first event */
+    /** Reset timeout on activity — switches to inactivity window after first event.
+     *  Keeps resetting even after rescue so long-running tool work isn't killed. */
     const onActivity = () => {
-      if (timedOut || rescued) return;
+      if (timedOut) return;
       hasActivity = true;
       clearTimeout(timeoutId);
       const nextTimeout = inactivityMs ?? timeout;

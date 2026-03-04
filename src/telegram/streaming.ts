@@ -238,9 +238,10 @@ export async function streamClaudeResponse(
 
     let timeoutId = setTimeout(killProcess, safetyTimeout);
 
-    /** Reset timeout on activity — switches to inactivity window after first event */
+    /** Reset timeout on activity — switches to inactivity window after first event.
+     *  Keeps resetting even after rescue so long-running tool work isn't killed. */
     const onActivity = () => {
-      if (timedOut || rescued) return;
+      if (timedOut) return;
       hasActivity = true;
       clearTimeout(timeoutId);
       // Use inactivity timeout if configured, otherwise keep initial timeout
