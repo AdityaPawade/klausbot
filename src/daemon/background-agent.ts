@@ -4,6 +4,9 @@
  * Spawns `claude --resume <sessionId> -p "continue..."` as a detached background
  * process. Writes task files so the existing task-watcher sends Telegram
  * notifications on completion.
+ *
+ * Returns a RescuedProcess handle so the rescue monitor can track activity
+ * and enforce safety timeouts.
  */
 
 import { spawn } from "child_process";
@@ -13,15 +16,14 @@ import path from "path";
 import { KLAUSBOT_HOME } from "../memory/home.js";
 import { createChildLogger } from "../utils/logger.js";
 import { writeMcpConfigFile, getHooksConfig } from "./spawner.js";
+import type { ToolUseEntry, ClaudeResponse } from "./spawner.js";
+import type { RescuedProcess } from "./rescue-monitor.js";
 
 const log = createChildLogger("background-agent");
 
 const TASKS_DIR = path.join(KLAUSBOT_HOME, "tasks");
 const ACTIVE_DIR = path.join(TASKS_DIR, "active");
 const COMPLETED_DIR = path.join(TASKS_DIR, "completed");
-
-/** Default timeout for background agents: none (run indefinitely) */
-const DEFAULT_TIMEOUT = 0;
 
 const BASE_RESUME_PROMPT = `You are now continuing as a background agent. The user already received your immediate response.
 
@@ -78,8 +80,6 @@ export interface BackgroundAgentOptions {
   description: string;
   /** Task kind: 'coding' for programming, 'general' for research/conversation */
   kind?: "coding" | "general";
-  /** Timeout in ms (default: 300000 = 5 min) */
-  timeout?: number;
   /** Model override */
   model?: string;
 }
@@ -90,15 +90,17 @@ export interface BackgroundAgentOptions {
  * 1. Writes active task file
  * 2. Spawns `claude --resume <sessionId> -p "continue..."` as detached process
  * 3. On completion, writes completed task file (task-watcher sends notification)
+ * 4. Returns a RescuedProcess handle for rescue-monitor tracking
  */
-export function spawnBackgroundAgent(options: BackgroundAgentOptions): void {
+export function spawnBackgroundAgent(
+  options: BackgroundAgentOptions,
+): RescuedProcess {
   const {
     sessionId,
     chatId,
     taskId,
     description,
     kind = "general",
-    timeout = DEFAULT_TIMEOUT,
     model,
   } = options;
 
@@ -160,30 +162,74 @@ export function spawnBackgroundAgent(options: BackgroundAgentOptions): void {
   });
 
   let accumulated = "";
-  let timedOut = false;
+  const toolUseEntries: ToolUseEntry[] = [];
+  let currentToolName = "";
+  let currentToolInput = "";
 
-  // Timeout (0 = no timeout, run indefinitely)
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  if (timeout > 0) {
-    timeoutId = setTimeout(() => {
-      timedOut = true;
-      claude.kill("SIGTERM");
-      setTimeout(() => {
-        if (!claude.killed) claude.kill("SIGKILL");
-      }, 5000);
-    }, timeout);
-  }
-
-  // Parse NDJSON stream
+  // Parse NDJSON stream — accumulate text and track tool use
   const rl = createInterface({ input: claude.stdout! });
   rl.on("line", (line) => {
     try {
       const event = JSON.parse(line);
+
+      // Text accumulation
       if (event.type === "content_block_delta" && event.delta?.text) {
         accumulated += event.delta.text;
       }
       if (event.type === "result" && event.result !== undefined) {
         accumulated = event.result;
+      }
+
+      // Tool use start — capture tool name
+      if (
+        event.type === "content_block_start" &&
+        event.content_block?.type === "tool_use"
+      ) {
+        currentToolName = event.content_block.name ?? "";
+        currentToolInput = "";
+      }
+
+      // Tool use input delta — accumulate JSON input
+      if (
+        event.type === "content_block_delta" &&
+        event.delta?.type === "input_json_delta"
+      ) {
+        currentToolInput += event.delta.partial_json ?? "";
+      }
+
+      // Tool use block end — save entry
+      if (event.type === "content_block_stop" && currentToolName) {
+        let parsedInput: Record<string, unknown> = {};
+        try {
+          parsedInput = JSON.parse(currentToolInput);
+        } catch {
+          parsedInput = { _raw: currentToolInput };
+        }
+        toolUseEntries.push({ name: currentToolName, input: parsedInput });
+        currentToolName = "";
+        currentToolInput = "";
+      }
+
+      // MCP tool calls arrive as "assistant" message events
+      const eventAny = event as Record<string, unknown>;
+      if (
+        eventAny.type === "assistant" &&
+        (eventAny.message as Record<string, unknown>)?.content
+      ) {
+        const content = (eventAny.message as Record<string, unknown>)
+          .content as Array<{
+          type: string;
+          name?: string;
+          input?: Record<string, unknown>;
+        }>;
+        for (const block of content) {
+          if (block.type === "tool_use" && block.name) {
+            toolUseEntries.push({
+              name: block.name,
+              input: block.input ?? {},
+            });
+          }
+        }
       }
     } catch {
       // skip non-JSON
@@ -196,71 +242,99 @@ export function spawnBackgroundAgent(options: BackgroundAgentOptions): void {
     stderr += data.toString();
   });
 
-  // On close → write completed task file
-  claude.on("close", (code) => {
-    if (timeoutId) clearTimeout(timeoutId);
+  // Completion promise — resolves when process finishes
+  const completionPromise = new Promise<ClaudeResponse>((resolve, reject) => {
+    claude.on("close", (code) => {
+      const isSuccess = code === 0;
 
-    const completedData = {
-      id: taskId,
-      chatId: String(chatId),
-      description,
-      startedAt: taskData.startedAt,
-      completedAt: new Date().toISOString(),
-      status: timedOut ? "failed" : code === 0 ? "success" : "failed",
-      summary:
-        accumulated || (timedOut ? "Timed out" : `Exited with code ${code}`),
-      error: timedOut
-        ? `Timed out after ${Math.round(timeout / 1000)}s`
-        : code !== 0
-          ? stderr.slice(0, 500)
-          : undefined,
-    };
+      const completedData = {
+        id: taskId,
+        chatId: String(chatId),
+        description,
+        startedAt: taskData.startedAt,
+        completedAt: new Date().toISOString(),
+        status: isSuccess ? "success" : "failed",
+        summary: accumulated || `Exited with code ${code}`,
+        error: !isSuccess ? stderr.slice(0, 500) : undefined,
+      };
 
-    // Write completed task file → task-watcher picks it up
-    const completedPath = path.join(COMPLETED_DIR, `${taskId}.json`);
-    writeFileSync(completedPath, JSON.stringify(completedData, null, 2));
+      // Write completed task file → task-watcher picks it up
+      const completedPath = path.join(COMPLETED_DIR, `${taskId}.json`);
+      writeFileSync(completedPath, JSON.stringify(completedData, null, 2));
 
-    // Remove active task file
-    try {
-      unlinkSync(activeTaskPath);
-    } catch {
-      // Already removed or doesn't exist
-    }
+      // Remove active task file
+      try {
+        unlinkSync(activeTaskPath);
+      } catch {
+        // Already removed or doesn't exist
+      }
 
-    log.info(
-      {
-        taskId,
-        status: completedData.status,
-        resultLength: accumulated.length,
-        code,
-        timedOut,
-      },
-      "Background agent finished",
-    );
+      log.info(
+        {
+          taskId,
+          status: completedData.status,
+          resultLength: accumulated.length,
+          code,
+        },
+        "Background agent finished",
+      );
+
+      if (isSuccess) {
+        resolve({
+          result: accumulated,
+          cost_usd: 0,
+          session_id: sessionId,
+          duration_ms: Date.now() - new Date(taskData.startedAt).getTime(),
+          is_error: false,
+          toolUse: [...toolUseEntries],
+        });
+      } else {
+        reject(
+          new Error(
+            stderr.slice(0, 200) || `Background agent exited with code ${code}`,
+          ),
+        );
+      }
+    });
+
+    claude.on("error", (err) => {
+      log.error({ taskId, err }, "Background agent spawn error");
+
+      // Write failed task
+      const completedData = {
+        id: taskId,
+        chatId: String(chatId),
+        description,
+        startedAt: taskData.startedAt,
+        completedAt: new Date().toISOString(),
+        status: "failed",
+        summary: `Spawn error: ${err.message}`,
+        error: err.message,
+      };
+      const completedPath = path.join(COMPLETED_DIR, `${taskId}.json`);
+      writeFileSync(completedPath, JSON.stringify(completedData, null, 2));
+
+      try {
+        unlinkSync(activeTaskPath);
+      } catch {
+        // Already removed
+      }
+
+      reject(err);
+    });
   });
 
-  claude.on("error", (err) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    log.error({ taskId, err }, "Background agent spawn error");
-
-    // Write failed task
-    const completedData = {
-      id: taskId,
-      chatId: String(chatId),
-      description,
-      startedAt: taskData.startedAt,
-      completedAt: new Date().toISOString(),
-      status: "failed",
-      summary: `Spawn error: ${err.message}`,
-      error: err.message,
-    };
-    const completedPath = path.join(COMPLETED_DIR, `${taskId}.json`);
-    writeFileSync(completedPath, JSON.stringify(completedData, null, 2));
-
-    try {
-      unlinkSync(activeTaskPath);
-    } catch {
-      // Already removed
-    }
-  });
+  // Build and return the RescuedProcess handle
+  return {
+    getAccumulated: () => accumulated,
+    completion: completionPromise,
+    sessionId,
+    toolUseSoFar: () => [...toolUseEntries],
+    kill: () => {
+      claude.kill("SIGTERM");
+      setTimeout(() => {
+        if (!claude.killed) claude.kill("SIGKILL");
+      }, 5000);
+    },
+  };
 }

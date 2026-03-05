@@ -48,6 +48,14 @@ export interface RescueMonitorCallbacks {
     reason: string,
     opts?: { messageThreadId?: number },
   ) => Promise<void>;
+  /** Called when at capacity and a new process wants to register */
+  onConflict?: (
+    chatId: number,
+    existingDesc: string,
+    existingType: string,
+    newDesc: string,
+    pendingId: string,
+  ) => Promise<void>;
 }
 
 /** Configuration for rescue monitor */
@@ -66,6 +74,10 @@ interface TrackedProcess {
   handle: RescuedProcess;
   context: RescueContext;
   model?: string;
+  /** Human-readable description of the task */
+  description: string;
+  /** Whether this is a foreground rescue or background agent */
+  type: "foreground" | "background";
   /** Text length at last update */
   lastSentLength: number;
   /** Tool count at last update (for activity reporting) */
@@ -74,6 +86,16 @@ interface TrackedProcess {
   intervalId: ReturnType<typeof setInterval>;
   /** Safety kill timer */
   safetyTimerId: ReturnType<typeof setTimeout>;
+}
+
+/** Pending registration waiting for user conflict resolution */
+interface PendingRegistration {
+  id: string;
+  handle: RescuedProcess;
+  context: RescueContext;
+  model?: string;
+  description: string;
+  type: "foreground" | "background";
 }
 
 /**
@@ -85,6 +107,7 @@ interface TrackedProcess {
  */
 export class RescueMonitor {
   private tracked = new Map<string, TrackedProcess>();
+  private pendingRegistrations = new Map<string, PendingRegistration>();
   private callbacks: RescueMonitorCallbacks;
   private config: RescueMonitorConfig;
 
@@ -93,23 +116,115 @@ export class RescueMonitor {
     this.config = config;
   }
 
+  /**
+   * Register if there's capacity, otherwise prompt user to resolve the conflict.
+   * Returns true if registered immediately, false if pending user decision.
+   */
+  registerOrPrompt(
+    id: string,
+    handle: RescuedProcess,
+    context: RescueContext,
+    model: string | undefined,
+    description: string,
+    type: "foreground" | "background",
+  ): boolean {
+    if (this.tracked.size < this.config.maxConcurrent) {
+      this.register(id, handle, context, model, description, type);
+      return true;
+    }
+
+    // At capacity — store pending and notify via callback
+    this.pendingRegistrations.set(id, {
+      id,
+      handle,
+      context,
+      model,
+      description,
+      type,
+    });
+
+    // Find the oldest tracked process for the conflict prompt
+    const oldest = this.tracked.values().next().value!;
+
+    if (this.callbacks.onConflict) {
+      this.callbacks
+        .onConflict(
+          context.chatId,
+          oldest.description,
+          oldest.type,
+          description,
+          id,
+        )
+        .catch((err) => {
+          log.error({ err, id }, "Failed to send conflict prompt");
+        });
+    } else {
+      // No conflict callback — fall back to automatic eviction
+      log.warn(
+        { evictedId: oldest.id, newId: id },
+        "Evicting oldest rescued process (no conflict callback)",
+      );
+      this.evict(oldest.id, "Replaced by newer request");
+      this.pendingRegistrations.delete(id);
+      this.register(id, handle, context, model, description, type);
+      return true;
+    }
+
+    log.info(
+      { pendingId: id, existingId: oldest.id, tracked: this.tracked.size },
+      "Process pending conflict resolution",
+    );
+    return false;
+  }
+
+  /**
+   * Resolve a pending conflict — either replace the oldest tracked process
+   * or cancel the pending one.
+   */
+  resolveConflict(pendingId: string, action: "replace" | "cancel"): void {
+    const pending = this.pendingRegistrations.get(pendingId);
+    if (!pending) {
+      log.warn({ pendingId }, "Conflict resolution for unknown pending ID");
+      return;
+    }
+
+    this.pendingRegistrations.delete(pendingId);
+
+    if (action === "replace") {
+      // Evict the oldest tracked process
+      const oldest = this.tracked.keys().next().value;
+      if (oldest) {
+        log.info(
+          { evictedId: oldest, newId: pendingId },
+          "User chose to replace existing process",
+        );
+        this.evict(oldest, "Replaced by user choice");
+      }
+      // Register the pending process
+      this.register(
+        pending.id,
+        pending.handle,
+        pending.context,
+        pending.model,
+        pending.description,
+        pending.type,
+      );
+    } else {
+      // Cancel the pending process
+      log.info({ pendingId }, "User cancelled pending process");
+      pending.handle.kill();
+    }
+  }
+
   /** Register a rescued process for monitoring */
   register(
     id: string,
     handle: RescuedProcess,
     context: RescueContext,
     model?: string,
+    description?: string,
+    type?: "foreground" | "background",
   ): void {
-    // Evict oldest if at capacity
-    if (this.tracked.size >= this.config.maxConcurrent) {
-      const oldest = this.tracked.keys().next().value!;
-      log.warn(
-        { evictedId: oldest, newId: id },
-        "Evicting oldest rescued process",
-      );
-      this.evict(oldest, "Replaced by newer request");
-    }
-
     const lastSentLength = context.sentText.length;
 
     // Periodic progress updates
@@ -130,6 +245,8 @@ export class RescueMonitor {
       handle,
       context,
       model,
+      description: description ?? context.originalMessage.slice(0, 100),
+      type: type ?? "foreground",
       lastSentLength,
       lastToolCount: handle.toolUseSoFar().length,
       intervalId,
@@ -162,7 +279,12 @@ export class RescueMonitor {
       });
 
     log.info(
-      { id, chatId: context.chatId, tracked: this.tracked.size },
+      {
+        id,
+        chatId: context.chatId,
+        tracked: this.tracked.size,
+        type: tracked.type,
+      },
       "Registered rescued process",
     );
   }
@@ -402,6 +524,13 @@ export class RescueMonitor {
       }
     }
     this.tracked.clear();
+
+    // Kill any pending registrations too
+    for (const [, pending] of this.pendingRegistrations) {
+      pending.handle.kill();
+    }
+    this.pendingRegistrations.clear();
+
     log.info("Rescue monitor shut down");
   }
 

@@ -287,6 +287,7 @@ function buildPromptWithMedia(text: string, media: MediaAttachment[]): string {
 /**
  * Check if Claude called start_background_task and spawn a background agent.
  * Scans toolUse entries for the MCP tool call and extracts description.
+ * Registers the spawned agent with the rescue monitor for activity-based safety timeouts.
  */
 function maybeSpawnBackgroundAgent(
   toolUse: ToolUseEntry[] | undefined,
@@ -312,7 +313,26 @@ function maybeSpawnBackgroundAgent(
     "Spawning background agent from tool call",
   );
 
-  spawnBackgroundAgent({ sessionId, chatId, taskId, description, kind, model });
+  const handle = spawnBackgroundAgent({
+    sessionId,
+    chatId,
+    taskId,
+    description,
+    kind,
+    model,
+  });
+
+  // Register with rescue monitor for activity-based safety timeouts
+  if (rescueMonitor) {
+    rescueMonitor.registerOrPrompt(
+      taskId,
+      handle,
+      { chatId, sentText: "", originalMessage: description },
+      model,
+      description,
+      "background",
+    );
+  }
 }
 
 /**
@@ -520,6 +540,25 @@ export async function startGateway(): Promise<void> {
       return;
     }
 
+    // --- Conflict resolution ---
+    if (data.startsWith("conflict:")) {
+      const [, action, pendingId] = data.split(":");
+      if (!action || !pendingId || !rescueMonitor) return;
+
+      if (action === "replace") {
+        rescueMonitor.resolveConflict(pendingId, "replace");
+        await ctx.answerCallbackQuery({ text: "Replacing existing task" });
+        await ctx.editMessageText("Replaced existing task with the new one.");
+        log.info({ pendingId }, "User chose to replace existing process");
+      } else if (action === "cancel") {
+        rescueMonitor.resolveConflict(pendingId, "cancel");
+        await ctx.answerCallbackQuery({ text: "New task cancelled" });
+        await ctx.editMessageText("Cancelled the new task.");
+        log.info({ pendingId }, "User cancelled pending process");
+      }
+      return;
+    }
+
     // --- Failed message retry ---
     if (data.startsWith("failed:")) {
       const [, action, retryId] = data.split(":");
@@ -608,6 +647,31 @@ export async function startGateway(): Promise<void> {
         } catch (err) {
           log.error({ err, chatId }, "Failed to send retry keyboard");
         }
+      },
+      onConflict: async (
+        chatId,
+        existingDesc,
+        existingType,
+        newDesc,
+        pendingId,
+      ) => {
+        const truncExisting =
+          existingDesc.length > 60
+            ? existingDesc.slice(0, 57) + "..."
+            : existingDesc;
+        const truncNew =
+          newDesc.length > 60 ? newDesc.slice(0, 57) + "..." : newDesc;
+        const msg =
+          `A task is already running:\n` +
+          `[${existingType}] "${escapeHtml(truncExisting)}"\n\n` +
+          `New task waiting: "${escapeHtml(truncNew)}"`;
+        const keyboard = new InlineKeyboard()
+          .text("Replace existing", `conflict:replace:${pendingId}`)
+          .text("Cancel new task", `conflict:cancel:${pendingId}`);
+        await bot.api.sendMessage(chatId, msg, {
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+        });
       },
     };
 
@@ -1254,7 +1318,7 @@ Use this chatId when creating cron jobs or background tasks.
           );
 
           // Register with rescue monitor
-          rescueMonitor.register(
+          rescueMonitor.registerOrPrompt(
             msg.id,
             streamRescueHandle,
             {
@@ -1264,6 +1328,8 @@ Use this chatId when creating cron jobs or background tasks.
               originalMessage: effectiveText,
             },
             jsonConfig.model,
+            effectiveText.slice(0, 100),
+            "foreground",
           );
 
           const duration = Date.now() - startTime;
@@ -1430,7 +1496,7 @@ Use this chatId when creating cron jobs or background tasks.
       );
 
       // Register with rescue monitor for continued tracking
-      rescueMonitor.register(
+      rescueMonitor.registerOrPrompt(
         msg.id,
         rescueHandle,
         {
@@ -1440,6 +1506,8 @@ Use this chatId when creating cron jobs or background tasks.
           originalMessage: effectiveText,
         },
         jsonConfig.model,
+        effectiveText.slice(0, 100),
+        "foreground",
       );
 
       const duration = Date.now() - startTime;
