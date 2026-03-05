@@ -1685,15 +1685,23 @@ async function splitAndSend(
             : undefined,
       });
     } catch (err) {
-      // If HTML parsing fails, fall back to plain text
+      // If HTML parsing fails, fall back to plain text with splitting
       log.warn({ err, chatId }, "HTML parse failed, sending as plain text");
-      await bot.api.sendMessage(chatId, text.slice(0, MAX_LENGTH), {
-        message_thread_id: threading?.messageThreadId,
-        reply_parameters:
-          i === 0 && threading?.replyToMessageId
-            ? { message_id: threading.replyToMessageId }
-            : undefined,
-      });
+      const plainChunks = splitTelegramMessage(text, MAX_LENGTH);
+      for (let j = 0; j < plainChunks.length; j++) {
+        await bot.api.sendMessage(chatId, plainChunks[j], {
+          message_thread_id: threading?.messageThreadId,
+          reply_parameters:
+            i === 0 && j === 0 && threading?.replyToMessageId
+              ? { message_id: threading.replyToMessageId }
+              : undefined,
+        });
+        if (plainChunks.length > 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+      // Already sent all plain text, skip remaining HTML chunks
+      return plainChunks.length;
     }
     if (chunks.length > 1) {
       await new Promise((resolve) => setTimeout(resolve, 100));

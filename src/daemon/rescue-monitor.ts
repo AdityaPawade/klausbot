@@ -1,4 +1,8 @@
-import { createChildLogger } from "../utils/index.js";
+import {
+  createChildLogger,
+  markdownToTelegramHtml,
+  splitTelegramMessage,
+} from "../utils/index.js";
 import type { ToolUseEntry, ClaudeResponse } from "./spawner.js";
 
 const log = createChildLogger("rescue-monitor");
@@ -289,6 +293,21 @@ export class RescueMonitor {
     );
   }
 
+  /** Split long text and send as multiple messages */
+  private async splitAndSendMessage(
+    chatId: number,
+    text: string,
+    opts?: { messageThreadId?: number; parseMode?: string },
+  ): Promise<void> {
+    const chunks = splitTelegramMessage(text, 4096);
+    for (const chunk of chunks) {
+      await this.callbacks.sendMessage(chatId, chunk, opts);
+      if (chunks.length > 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+  }
+
   /** Reset the safety timer for a tracked process (called on detected activity) */
   private resetSafetyTimer(tracked: TrackedProcess): void {
     clearTimeout(tracked.safetyTimerId);
@@ -320,18 +339,27 @@ export class RescueMonitor {
       const delta = current.slice(tracked.lastSentLength);
       if (!delta.trim()) return;
 
-      // Send text delta as a new message
+      // Send text delta, splitting if needed
       try {
-        await this.callbacks.sendMessage(
-          tracked.context.chatId,
-          delta.slice(0, 4096),
-          { messageThreadId: tracked.context.messageThreadId },
-        );
+        const deltaHtml = markdownToTelegramHtml(delta);
+        await this.splitAndSendMessage(tracked.context.chatId, deltaHtml, {
+          messageThreadId: tracked.context.messageThreadId,
+          parseMode: "HTML",
+        });
         tracked.lastSentLength = current.length;
         tracked.lastToolCount = tools.length;
         log.debug({ id, deltaLength: delta.length }, "Sent rescue delta");
-      } catch (err) {
-        log.warn({ err, id }, "Failed to send rescue delta message");
+      } catch {
+        // HTML failed — try plain text with splitting
+        try {
+          await this.splitAndSendMessage(tracked.context.chatId, delta, {
+            messageThreadId: tracked.context.messageThreadId,
+          });
+          tracked.lastSentLength = current.length;
+          tracked.lastToolCount = tools.length;
+        } catch (err) {
+          log.warn({ err, id }, "Failed to send rescue delta message");
+        }
       }
       return;
     }
@@ -420,26 +448,21 @@ export class RescueMonitor {
       "Rescued process completed",
     );
 
-    // Send any remaining text
+    // Send any remaining text, splitting if needed
     const remaining = response.result.slice(tracked.lastSentLength);
     if (remaining.trim()) {
       try {
-        await this.callbacks.sendMessage(
-          tracked.context.chatId,
-          remaining.slice(0, 4096),
-          {
-            messageThreadId: tracked.context.messageThreadId,
-            parseMode: "HTML",
-          },
-        );
+        const remainingHtml = markdownToTelegramHtml(remaining);
+        await this.splitAndSendMessage(tracked.context.chatId, remainingHtml, {
+          messageThreadId: tracked.context.messageThreadId,
+          parseMode: "HTML",
+        });
       } catch {
-        // Try plain text fallback
+        // Try plain text fallback with splitting
         try {
-          await this.callbacks.sendMessage(
-            tracked.context.chatId,
-            remaining.slice(0, 4096),
-            { messageThreadId: tracked.context.messageThreadId },
-          );
+          await this.splitAndSendMessage(tracked.context.chatId, remaining, {
+            messageThreadId: tracked.context.messageThreadId,
+          });
         } catch (err) {
           log.error({ err, id }, "Failed to send final rescue text");
         }
