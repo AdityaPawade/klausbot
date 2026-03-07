@@ -99,6 +99,47 @@ const failedMessages = new Map<
   }
 >();
 
+/** Buffer for collecting media group photos into a single message */
+const mediaGroupBuffer = new Map<
+  string,
+  {
+    chatId: number;
+    photos: { fileId: string; tempPath: string }[];
+    caption: string;
+    threading: ThreadingContext;
+    timer: ReturnType<typeof setTimeout>;
+  }
+>();
+
+/** Flush a completed media group buffer into the queue */
+async function flushMediaGroup(groupId: string): Promise<void> {
+  const group = mediaGroupBuffer.get(groupId);
+  if (!group) return;
+  mediaGroupBuffer.delete(groupId);
+
+  const media: MediaAttachment[] = group.photos.map((p) => ({
+    type: "photo" as const,
+    fileId: p.fileId,
+    localPath: p.tempPath,
+  }));
+
+  const queueId = queue.add(group.chatId, group.caption, media, group.threading);
+  log.info(
+    {
+      chatId: group.chatId,
+      queueId,
+      mediaCount: media.length,
+      mediaGroupId: groupId,
+      hasCaption: !!group.caption,
+    },
+    "Media group queued as single message",
+  );
+
+  processQueue().catch((err) => {
+    log.error({ err }, "Queue processing error");
+  });
+}
+
 /** Most recently active chat — used by heartbeat for target resolution */
 let lastActiveChatId: number | null = null;
 
@@ -881,6 +922,7 @@ export async function startGateway(): Promise<void> {
         fileId: largest.file_id,
         width: largest.width,
         height: largest.height,
+        mediaGroupId: ctx.message?.media_group_id,
       },
       "Received photo message",
     );
@@ -891,43 +933,73 @@ export async function startGateway(): Promise<void> {
     try {
       await downloadFile(bot, largest.file_id, tempPath);
 
-      const media: MediaAttachment[] = [
-        {
-          type: "photo",
-          fileId: largest.file_id,
-          localPath: tempPath,
-        },
-      ];
+      const mediaGroupId = ctx.message?.media_group_id;
 
-      // Get caption if any
-      const text = ctx.message?.caption ?? "";
+      if (mediaGroupId) {
+        // Part of a media group (album) — buffer and flush after delay
+        const existing = mediaGroupBuffer.get(mediaGroupId);
+        if (existing) {
+          // Add to existing buffer, reset timer
+          existing.photos.push({ fileId: largest.file_id, tempPath });
+          // Caption is only on the first photo, but take it if present
+          if (!existing.caption && ctx.message?.caption) {
+            existing.caption = ctx.message.caption;
+          }
+          clearTimeout(existing.timer);
+          existing.timer = setTimeout(
+            () => flushMediaGroup(mediaGroupId),
+            500,
+          );
+        } else {
+          // Start new buffer
+          const threading: ThreadingContext = {
+            messageThreadId: ctx.msg?.message_thread_id,
+            replyToMessageId: ctx.msg?.message_id,
+          };
+          const timer = setTimeout(
+            () => flushMediaGroup(mediaGroupId),
+            500,
+          );
+          mediaGroupBuffer.set(mediaGroupId, {
+            chatId,
+            photos: [{ fileId: largest.file_id, tempPath }],
+            caption: ctx.message?.caption ?? "",
+            threading,
+            timer,
+          });
+        }
+      } else {
+        // Single photo — queue immediately
+        const media: MediaAttachment[] = [
+          {
+            type: "photo",
+            fileId: largest.file_id,
+            localPath: tempPath,
+          },
+        ];
 
-      // Extract threading context for forum topics and reply linking
-      const threading: ThreadingContext = {
-        messageThreadId: ctx.msg?.message_thread_id,
-        replyToMessageId: ctx.msg?.message_id,
-      };
+        const text = ctx.message?.caption ?? "";
+        const threading: ThreadingContext = {
+          messageThreadId: ctx.msg?.message_thread_id,
+          replyToMessageId: ctx.msg?.message_id,
+        };
 
-      const queueId = queue.add(chatId, text, media, threading);
-      log.info(
-        { chatId, queueId, mediaCount: 1, hasCaption: !!text },
-        "Photo message queued",
-      );
+        const queueId = queue.add(chatId, text, media, threading);
+        log.info(
+          { chatId, queueId, mediaCount: 1, hasCaption: !!text },
+          "Photo message queued",
+        );
 
-      processQueue().catch((err) => {
-        log.error({ err }, "Queue processing error");
-      });
+        processQueue().catch((err) => {
+          log.error({ err }, "Queue processing error");
+        });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.error({ err, chatId }, "Failed to download photo");
       await ctx.reply(`Failed to process photo: ${msg}`);
     }
   });
-
-  // Media group handler (multiple photos in one message)
-  // Note: grammY fires message:photo for each photo in a media group
-  // We handle them individually - they'll be queued separately
-  // Future enhancement: collect media groups using message.media_group_id
 
   // Catch-all for unsupported message types
   bot.on("message", async (ctx: MyContext) => {
