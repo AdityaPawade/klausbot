@@ -484,6 +484,11 @@ export class RescueMonitor {
       return;
     }
 
+    // Clean up BEFORE post-completion hooks so that onComplete callbacks
+    // (e.g. maybeSpawnBackgroundAgent -> registerOrPrompt) see a free slot
+    // instead of conflicting with the just-completed process.
+    this.cleanup(id);
+
     // Run post-completion hooks
     try {
       await this.callbacks.onComplete(
@@ -494,8 +499,6 @@ export class RescueMonitor {
     } catch (err) {
       log.error({ err, id }, "Post-completion hooks failed");
     }
-
-    this.cleanup(id);
   }
 
   /** Evict a tracked process — kill and offer retry */
