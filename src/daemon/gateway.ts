@@ -123,7 +123,12 @@ async function flushMediaGroup(groupId: string): Promise<void> {
     localPath: p.tempPath,
   }));
 
-  const queueId = queue.add(group.chatId, group.caption, media, group.threading);
+  const queueId = queue.add(
+    group.chatId,
+    group.caption,
+    media,
+    group.threading,
+  );
   log.info(
     {
       chatId: group.chatId,
@@ -946,20 +951,14 @@ export async function startGateway(): Promise<void> {
             existing.caption = ctx.message.caption;
           }
           clearTimeout(existing.timer);
-          existing.timer = setTimeout(
-            () => flushMediaGroup(mediaGroupId),
-            500,
-          );
+          existing.timer = setTimeout(() => flushMediaGroup(mediaGroupId), 500);
         } else {
           // Start new buffer
           const threading: ThreadingContext = {
             messageThreadId: ctx.msg?.message_thread_id,
             replyToMessageId: ctx.msg?.message_id,
           };
-          const timer = setTimeout(
-            () => flushMediaGroup(mediaGroupId),
-            500,
-          );
+          const timer = setTimeout(() => flushMediaGroup(mediaGroupId), 500);
           mediaGroupBuffer.set(mediaGroupId, {
             chatId,
             photos: [{ fileId: largest.file_id, tempPath }],
