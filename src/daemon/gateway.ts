@@ -960,43 +960,42 @@ export async function startGateway(): Promise<void> {
       "Received photo message",
     );
 
-    // Download photo to temp location
-    const tempPath = path.join(os.tmpdir(), `klausbot-photo-${Date.now()}.jpg`);
+    const mediaGroupId = ctx.message?.media_group_id;
 
-    try {
-      await downloadFile(bot, largest.file_id, tempPath);
-
-      const mediaGroupId = ctx.message?.media_group_id;
-
-      if (mediaGroupId) {
-        // Part of a media group (album) — buffer and flush after delay
-        const existing = mediaGroupBuffer.get(mediaGroupId);
-        if (existing) {
-          // Add to existing buffer, reset timer
-          existing.photos.push({ fileId: largest.file_id, tempPath });
-          // Caption is only on the first photo, but take it if present
-          if (!existing.caption && ctx.message?.caption) {
-            existing.caption = ctx.message.caption;
-          }
-          clearTimeout(existing.timer);
-          existing.timer = setTimeout(() => flushMediaGroup(mediaGroupId), 500);
-        } else {
-          // Start new buffer
-          const threading: ThreadingContext = {
-            messageThreadId: ctx.msg?.message_thread_id,
-            replyToMessageId: ctx.msg?.message_id,
-          };
-          const timer = setTimeout(() => flushMediaGroup(mediaGroupId), 500);
-          mediaGroupBuffer.set(mediaGroupId, {
-            chatId,
-            photos: [{ fileId: largest.file_id, tempPath }],
-            caption: ctx.message?.caption ?? "",
-            threading,
-            timer,
-          });
+    if (mediaGroupId) {
+      // Part of a media group (album) — buffer file ID immediately, download at flush
+      const existing = mediaGroupBuffer.get(mediaGroupId);
+      if (existing) {
+        existing.fileIds.push(largest.file_id);
+        if (!existing.caption && ctx.message?.caption) {
+          existing.caption = ctx.message.caption;
         }
+        clearTimeout(existing.timer);
+        existing.timer = setTimeout(() => flushMediaGroup(mediaGroupId), 500);
       } else {
-        // Single photo — queue immediately
+        const threading: ThreadingContext = {
+          messageThreadId: ctx.msg?.message_thread_id,
+          replyToMessageId: ctx.msg?.message_id,
+        };
+        const timer = setTimeout(() => flushMediaGroup(mediaGroupId), 500);
+        mediaGroupBuffer.set(mediaGroupId, {
+          chatId,
+          fileIds: [largest.file_id],
+          caption: ctx.message?.caption ?? "",
+          threading,
+          timer,
+        });
+      }
+    } else {
+      // Single photo — download and queue immediately
+      const tempPath = path.join(
+        os.tmpdir(),
+        `klausbot-photo-${Date.now()}.jpg`,
+      );
+
+      try {
+        await downloadFile(bot, largest.file_id, tempPath);
+
         const media: MediaAttachment[] = [
           {
             type: "photo",
@@ -1020,11 +1019,11 @@ export async function startGateway(): Promise<void> {
         processQueue().catch((err) => {
           log.error({ err }, "Queue processing error");
         });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error({ err, chatId }, "Failed to download photo");
+        await ctx.reply(`Failed to process photo: ${msg}`);
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      log.error({ err, chatId }, "Failed to download photo");
-      await ctx.reply(`Failed to process photo: ${msg}`);
     }
   });
 
