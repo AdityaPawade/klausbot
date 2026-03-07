@@ -99,29 +99,57 @@ const failedMessages = new Map<
   }
 >();
 
-/** Buffer for collecting media group photos into a single message */
+/** Buffer for collecting media group photos into a single message.
+ *  Stores file IDs immediately on receipt; downloads happen at flush time. */
 const mediaGroupBuffer = new Map<
   string,
   {
     chatId: number;
-    photos: { fileId: string; tempPath: string }[];
+    fileIds: string[];
     caption: string;
     threading: ThreadingContext;
     timer: ReturnType<typeof setTimeout>;
   }
 >();
 
-/** Flush a completed media group buffer into the queue */
+/** Flush a completed media group — download all photos then queue */
 async function flushMediaGroup(groupId: string): Promise<void> {
   const group = mediaGroupBuffer.get(groupId);
   if (!group) return;
   mediaGroupBuffer.delete(groupId);
 
-  const media: MediaAttachment[] = group.photos.map((p) => ({
-    type: "photo" as const,
-    fileId: p.fileId,
-    localPath: p.tempPath,
-  }));
+  // Download all photos in parallel
+  const downloads = await Promise.allSettled(
+    group.fileIds.map(async (fileId, i) => {
+      const tempPath = path.join(
+        os.tmpdir(),
+        `klausbot-photo-${Date.now()}-${i}.jpg`,
+      );
+      await downloadFile(bot, fileId, tempPath);
+      return { fileId, tempPath };
+    }),
+  );
+
+  const media: MediaAttachment[] = [];
+  for (const result of downloads) {
+    if (result.status === "fulfilled") {
+      media.push({
+        type: "photo" as const,
+        fileId: result.value.fileId,
+        localPath: result.value.tempPath,
+      });
+    } else {
+      log.warn(
+        { err: result.reason, mediaGroupId: groupId },
+        "Failed to download photo in media group",
+      );
+    }
+  }
+
+  if (media.length === 0) {
+    log.error({ mediaGroupId: groupId }, "All media group downloads failed");
+    return;
+  }
 
   const queueId = queue.add(
     group.chatId,
