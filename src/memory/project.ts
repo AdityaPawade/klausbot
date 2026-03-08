@@ -13,9 +13,14 @@ import { readdirSync } from "fs";
 import { join } from "path";
 import { KLAUSBOT_HOME, DIRS, setProjectHomeOverride } from "./home.js";
 
-/** State file: ~/.klausbot/projects/projects.json */
-const PROJECTS_DIR = join(KLAUSBOT_HOME, "projects");
-const STATE_PATH = join(PROJECTS_DIR, "projects.json");
+/** Computed lazily to support testing with mocked KLAUSBOT_HOME */
+function getProjectsDir(): string {
+  return join(KLAUSBOT_HOME, "projects");
+}
+
+function getStatePath(): string {
+  return join(getProjectsDir(), "projects.json");
+}
 
 /** Persisted project state */
 interface ProjectState {
@@ -46,10 +51,10 @@ function ensureStateLoaded(): void {
   if (stateLoaded) return;
   stateLoaded = true;
 
-  if (existsSync(STATE_PATH)) {
+  if (existsSync(getStatePath())) {
     try {
       const data = JSON.parse(
-        readFileSync(STATE_PATH, "utf-8"),
+        readFileSync(getStatePath(), "utf-8"),
       ) as ProjectState;
       activeProject = data.activeProject ?? null;
     } catch {
@@ -72,11 +77,12 @@ function syncHomeOverride(): void {
 
 /** Persist project state to disk */
 function persistState(): void {
-  if (!existsSync(PROJECTS_DIR)) {
-    mkdirSync(PROJECTS_DIR, { recursive: true });
+  const projectsDir = getProjectsDir();
+  if (!existsSync(projectsDir)) {
+    mkdirSync(projectsDir, { recursive: true });
   }
   const state: ProjectState = { activeProject };
-  writeFileSync(STATE_PATH, JSON.stringify(state, null, 2));
+  writeFileSync(getStatePath(), JSON.stringify(state, null, 2));
 }
 
 /**
@@ -93,7 +99,7 @@ export function getActiveProject(): string | null {
  * @returns path to ~/.klausbot/projects/<name>/
  */
 export function getProjectHome(projectName: string): string {
-  return join(PROJECTS_DIR, projectName);
+  return join(getProjectsDir(), projectName);
 }
 
 /**
@@ -158,9 +164,10 @@ export function setActiveProject(projectName: string | null): boolean {
  * @returns array of project names (directory names under ~/.klausbot/projects/)
  */
 export function listProjects(): string[] {
-  if (!existsSync(PROJECTS_DIR)) return [];
+  const projectsDir = getProjectsDir();
+  if (!existsSync(projectsDir)) return [];
 
-  return readdirSync(PROJECTS_DIR, { withFileTypes: true })
+  return readdirSync(projectsDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();

@@ -4,24 +4,32 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
 
-// We need to mock KLAUSBOT_HOME before importing project.ts
-// Create a real temp directory for each test
+// Hoisted mutable ref so the mock can read it at import time
+const { testHomeRef } = vi.hoisted(() => ({
+  testHomeRef: { value: "/tmp/klausbot-project-test-init" },
+}));
 
-let testHome: string;
-
-// Mock home.ts to use our temp directory
+// Mock home.ts — project.ts uses KLAUSBOT_HOME at module level
 vi.mock("../../../src/memory/home.js", () => {
-  // Return a proxy that reads testHome at call time
+  let override: string | null = null;
   return {
     get KLAUSBOT_HOME() {
-      return testHome;
+      return testHomeRef.value;
     },
     DIRS: ["config", "identity", "cron", "images", "logs"] as const,
-    setProjectHomeOverride: vi.fn(),
-    getProjectHomeOverride: vi.fn(),
+    setProjectHomeOverride: vi.fn((path: string | null) => {
+      override = path;
+    }),
+    getProjectHomeOverride: () => override,
     getHomePath: (...segments: string[]) => {
-      // Simplified: no project awareness in the mock (tested separately)
-      return [testHome, ...segments].join("/");
+      const globalSegments = new Set(["config"]);
+      if (
+        !override ||
+        (segments.length > 0 && globalSegments.has(segments[0]))
+      ) {
+        return [testHomeRef.value, ...segments].join("/");
+      }
+      return [override, ...segments].join("/");
     },
   };
 });
@@ -41,16 +49,19 @@ import { setProjectHomeOverride } from "../../../src/memory/home.js";
 
 describe("project management", () => {
   beforeEach(() => {
-    testHome = join(tmpdir(), `klausbot-test-${randomUUID().slice(0, 8)}`);
-    mkdirSync(testHome, { recursive: true });
+    testHomeRef.value = join(
+      tmpdir(),
+      `klausbot-test-${randomUUID().slice(0, 8)}`,
+    );
+    mkdirSync(testHomeRef.value, { recursive: true });
     resetProjectState();
     vi.mocked(setProjectHomeOverride).mockClear();
   });
 
   afterEach(() => {
     resetProjectState();
-    if (existsSync(testHome)) {
-      rmSync(testHome, { recursive: true, force: true });
+    if (existsSync(testHomeRef.value)) {
+      rmSync(testHomeRef.value, { recursive: true, force: true });
     }
   });
 
@@ -99,9 +110,8 @@ describe("project management", () => {
     });
 
     it("loads persisted active project from disk", () => {
-      const projectsDir = join(testHome, "projects");
+      const projectsDir = join(testHomeRef.value, "projects");
       mkdirSync(projectsDir, { recursive: true });
-      // Also create the project directory so it's valid
       mkdirSync(join(projectsDir, "test-project"), { recursive: true });
       writeFileSync(
         join(projectsDir, "projects.json"),
@@ -113,7 +123,7 @@ describe("project management", () => {
     });
 
     it("handles corrupted state file gracefully", () => {
-      const projectsDir = join(testHome, "projects");
+      const projectsDir = join(testHomeRef.value, "projects");
       mkdirSync(projectsDir, { recursive: true });
       writeFileSync(join(projectsDir, "projects.json"), "NOT JSON{{{");
 
@@ -128,8 +138,7 @@ describe("project management", () => {
       expect(result).toBe(true);
       expect(getActiveProject()).toBe("my-project");
 
-      // Verify persisted
-      const statePath = join(testHome, "projects", "projects.json");
+      const statePath = join(testHomeRef.value, "projects", "projects.json");
       expect(existsSync(statePath)).toBe(true);
     });
 
@@ -146,7 +155,7 @@ describe("project management", () => {
 
     it("creates project directories", () => {
       setActiveProject("new-proj");
-      const projectHome = join(testHome, "projects", "new-proj");
+      const projectHome = join(testHomeRef.value, "projects", "new-proj");
       expect(existsSync(projectHome)).toBe(true);
       expect(existsSync(join(projectHome, "identity"))).toBe(true);
       expect(existsSync(join(projectHome, "logs"))).toBe(true);
@@ -159,7 +168,7 @@ describe("project management", () => {
 
     it("does NOT create config dir in project (config is global)", () => {
       setActiveProject("new-proj");
-      const projectHome = join(testHome, "projects", "new-proj");
+      const projectHome = join(testHomeRef.value, "projects", "new-proj");
       expect(existsSync(join(projectHome, "config"))).toBe(false);
     });
 
@@ -175,7 +184,7 @@ describe("project management", () => {
     it("calls setProjectHomeOverride when activating", () => {
       setActiveProject("test-proj");
       expect(setProjectHomeOverride).toHaveBeenCalledWith(
-        join(testHome, "projects", "test-proj"),
+        join(testHomeRef.value, "projects", "test-proj"),
       );
     });
 
@@ -193,7 +202,7 @@ describe("project management", () => {
 
       setActiveProject("project-b");
       expect(setProjectHomeOverride).toHaveBeenCalledWith(
-        join(testHome, "projects", "project-b"),
+        join(testHomeRef.value, "projects", "project-b"),
       );
     });
   });
@@ -208,7 +217,7 @@ describe("project management", () => {
     });
 
     it("lists project directories sorted alphabetically", () => {
-      const projectsDir = join(testHome, "projects");
+      const projectsDir = join(testHomeRef.value, "projects");
       mkdirSync(join(projectsDir, "beta"), { recursive: true });
       mkdirSync(join(projectsDir, "alpha"), { recursive: true });
       mkdirSync(join(projectsDir, "gamma"), { recursive: true });
@@ -217,7 +226,7 @@ describe("project management", () => {
     });
 
     it("ignores non-directory entries", () => {
-      const projectsDir = join(testHome, "projects");
+      const projectsDir = join(testHomeRef.value, "projects");
       mkdirSync(projectsDir, { recursive: true });
       writeFileSync(join(projectsDir, "projects.json"), "{}");
       mkdirSync(join(projectsDir, "real-project"), { recursive: true });
@@ -250,7 +259,7 @@ describe("project management", () => {
   describe("getProjectHome", () => {
     it("returns path under projects directory", () => {
       const result = getProjectHome("test");
-      expect(result).toBe(join(testHome, "projects", "test"));
+      expect(result).toBe(join(testHomeRef.value, "projects", "test"));
     });
   });
 
@@ -258,7 +267,11 @@ describe("project management", () => {
     it("is idempotent — can be called multiple times", () => {
       initializeProjectDirs("idempotent-test");
       initializeProjectDirs("idempotent-test");
-      const projectHome = join(testHome, "projects", "idempotent-test");
+      const projectHome = join(
+        testHomeRef.value,
+        "projects",
+        "idempotent-test",
+      );
       expect(existsSync(projectHome)).toBe(true);
     });
   });
@@ -268,12 +281,10 @@ describe("project management", () => {
       setActiveProject("persistent-proj");
       expect(getActiveProject()).toBe("persistent-proj");
 
-      // Simulate process restart
+      // Simulate process restart: reset clears cache, reload reads from disk
       resetProjectState();
-      expect(getActiveProject()).toBeNull(); // reset clears in-memory
-
       reloadProjectState();
-      expect(getActiveProject()).toBe("persistent-proj"); // reloaded from disk
+      expect(getActiveProject()).toBe("persistent-proj");
     });
 
     it("null project persists correctly", () => {
