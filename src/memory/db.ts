@@ -8,6 +8,9 @@ import * as schema from "./schema.js";
 let sqliteDb: Database.Database | null = null;
 let drizzleDb: BetterSQLite3Database<typeof schema> | null = null;
 
+/** Track which DB path is currently open (for switch detection) */
+let currentDbPath: string | null = null;
+
 /**
  * Get or create SQLite database with vector extension
  * Lazy initialization - creates DB on first call
@@ -21,6 +24,7 @@ export function getDb(): Database.Database {
 
   const dbPath = getHomePath("klausbot.db");
   sqliteDb = new Database(dbPath);
+  currentDbPath = dbPath;
 
   // Enable WAL mode for concurrent reads
   sqliteDb.pragma("journal_mode = WAL");
@@ -127,5 +131,28 @@ export function closeDb(): void {
     sqliteDb.close();
     sqliteDb = null;
     drizzleDb = null;
+    currentDbPath = null;
   }
+}
+
+/**
+ * Switch database connection to a new path
+ *
+ * Closes the current DB (if open), clears cached instances,
+ * and lets the next getDb()/getDrizzle() call open the new path
+ * (determined by the current getHomePath() resolution).
+ *
+ * After calling this, you MUST call runMigrations() to ensure
+ * the new DB has all required tables.
+ */
+export function switchDb(): void {
+  closeDb();
+  // Next getDb() call will pick up the new getHomePath("klausbot.db")
+}
+
+/**
+ * Get the path of the currently open database (for diagnostics)
+ */
+export function getCurrentDbPath(): string | null {
+  return currentDbPath;
 }

@@ -31,7 +31,26 @@ export {
 } from "./context.js";
 
 // Database management
-export { getDb, closeDb, runMigrations, getDrizzle } from "./db.js";
+export {
+  getDb,
+  closeDb,
+  runMigrations,
+  getDrizzle,
+  switchDb,
+  getCurrentDbPath,
+} from "./db.js";
+
+// Project management
+export {
+  getActiveProject,
+  setActiveProject,
+  listProjects,
+  projectExists,
+  sanitizeProjectName,
+  getProjectHome,
+  resetProjectState,
+  reloadProjectState,
+} from "./project.js";
 
 // Conversation storage
 export {

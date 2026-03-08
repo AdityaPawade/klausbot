@@ -47,6 +47,11 @@ import {
   getOrchestrationInstructions,
   storeConversation,
   buildConversationContext,
+  switchDb,
+  getActiveProject,
+  setActiveProject,
+  listProjects,
+  reloadProjectState,
 } from "../memory/index.js";
 import {
   needsBootstrap,
@@ -444,6 +449,13 @@ export async function startGateway(): Promise<void> {
     log.info("Created BOOTSTRAP.md for first-time setup");
   }
 
+  // Load persisted project state (sets home path override if a project was active)
+  reloadProjectState();
+  const activeProject = getActiveProject();
+  if (activeProject) {
+    log.info({ project: activeProject }, "Restored active project from state");
+  }
+
   initializeEmbeddings();
 
   // Run database migrations (creates tables if needed)
@@ -836,9 +848,89 @@ export async function startGateway(): Promise<void> {
       }
     }
 
-    lines.push("", `*Your Status*`, `Approved: ${isApproved ? "Yes" : "No"}`);
+    const currentProject = getActiveProject();
+    lines.push(
+      "",
+      `*Your Status*`,
+      `Approved: ${isApproved ? "Yes" : "No"}`,
+      `Project: ${currentProject ?? "global"}`,
+    );
 
     await ctx.reply(lines.join("\n"), { parse_mode: "Markdown" });
+  });
+
+  bot.command("project", async (ctx: MyContext) => {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    const arg = (ctx.match as string)?.trim() || "";
+
+    // /project (no args) — show current project + list
+    if (!arg) {
+      const current = getActiveProject();
+      const projects = listProjects();
+
+      const lines = ["*Project*", `Active: ${current ?? "global (default)"}`];
+
+      if (projects.length > 0) {
+        lines.push("", "*Available*");
+        for (const p of projects) {
+          const marker = p === current ? " ← active" : "";
+          lines.push(`• ${p}${marker}`);
+        }
+      }
+
+      lines.push(
+        "",
+        "_Usage:_",
+        "`/project <name>` — switch to project",
+        "`/project off` — switch to global",
+      );
+
+      await ctx.reply(lines.join("\n"), { parse_mode: "Markdown" });
+      return;
+    }
+
+    // /project off — deselect, back to global
+    if (arg === "off") {
+      const prev = getActiveProject();
+      if (!prev) {
+        await ctx.reply("Already on global (no project active).");
+        return;
+      }
+
+      setActiveProject(null);
+      switchDb();
+      runMigrations();
+      invalidateIdentityCache();
+      log.info({ prev }, "Switched to global (project deselected)");
+      await ctx.reply(`Switched to *global* (was: ${prev})`, {
+        parse_mode: "Markdown",
+      });
+      return;
+    }
+
+    // /project <name> — switch to project
+    const prev = getActiveProject();
+    const ok = setActiveProject(arg);
+    if (!ok) {
+      await ctx.reply(
+        "Invalid project name. Use lowercase letters, numbers, and hyphens.",
+      );
+      return;
+    }
+
+    const current = getActiveProject()!;
+    switchDb();
+    runMigrations();
+    invalidateIdentityCache();
+
+    const isNew = prev !== current;
+    const label = isNew ? `Switched to *${current}*` : `Already on *${current}*`;
+    const detail = prev && prev !== current ? ` (was: ${prev})` : "";
+
+    log.info({ prev, current }, "Project switched");
+    await ctx.reply(`${label}${detail}`, { parse_mode: "Markdown" });
   });
 
   bot.command("help", async (ctx: MyContext) => {
@@ -846,6 +938,7 @@ export async function startGateway(): Promise<void> {
       "*Available Commands*",
       "/start - Request pairing or check status",
       "/status - Show queue and approval status",
+      "/project - Switch between projects",
       "/model - Show current model info",
       "/crons - List scheduled tasks",
       "/help - Show this help message",
