@@ -926,7 +926,9 @@ export async function startGateway(): Promise<void> {
     invalidateIdentityCache();
 
     const isNew = prev !== current;
-    const label = isNew ? `Switched to *${current}*` : `Already on *${current}*`;
+    const label = isNew
+      ? `Switched to *${current}*`
+      : `Already on *${current}*`;
     const detail = prev && prev !== current ? ` (was: ${prev})` : "";
 
     log.info({ prev, current }, "Project switched");

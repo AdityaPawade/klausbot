@@ -45,9 +45,7 @@ describe("getHomePath", () => {
     });
 
     it("resolves non-global paths to project home", () => {
-      expect(getHomePath("klausbot.db")).toBe(
-        join(projectHome, "klausbot.db"),
-      );
+      expect(getHomePath("klausbot.db")).toBe(join(projectHome, "klausbot.db"));
     });
 
     it("resolves identity paths to project home", () => {

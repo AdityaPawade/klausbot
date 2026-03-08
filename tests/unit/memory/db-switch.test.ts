@@ -215,9 +215,9 @@ describe("database connection switching", () => {
 
     // Verify project B has 2 rows
     const bCount = (
-      getDb()
-        .prepare("SELECT COUNT(*) as count FROM conversations")
-        .get() as { count: number }
+      getDb().prepare("SELECT COUNT(*) as count FROM conversations").get() as {
+        count: number;
+      }
     ).count;
     expect(bCount).toBe(2);
 
@@ -226,9 +226,9 @@ describe("database connection switching", () => {
     switchDb();
     getDb();
     const gCount = (
-      getDb()
-        .prepare("SELECT COUNT(*) as count FROM conversations")
-        .get() as { count: number }
+      getDb().prepare("SELECT COUNT(*) as count FROM conversations").get() as {
+        count: number;
+      }
     ).count;
     expect(gCount).toBe(1);
 
@@ -237,14 +237,14 @@ describe("database connection switching", () => {
     switchDb();
     getDb();
     const aCount = (
-      getDb()
-        .prepare("SELECT COUNT(*) as count FROM conversations")
-        .get() as { count: number }
+      getDb().prepare("SELECT COUNT(*) as count FROM conversations").get() as {
+        count: number;
+      }
     ).count;
     expect(aCount).toBe(1);
-    const aRow = getDb()
-      .prepare("SELECT summary FROM conversations")
-      .get() as { summary: string };
+    const aRow = getDb().prepare("SELECT summary FROM conversations").get() as {
+      summary: string;
+    };
     expect(aRow.summary).toBe("project-a");
   });
 });
