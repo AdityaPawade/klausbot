@@ -9,7 +9,12 @@ export {
   triggerRumination,
 } from "./scheduler.js";
 export { executeRumination, type RuminationResult } from "./executor.js";
-export { readAllBriefs, readBrief, getBriefPath, ensureBrief } from "./brief.js";
+export {
+  readAllBriefs,
+  readBrief,
+  getBriefPath,
+  ensureBrief,
+} from "./brief.js";
 export {
   readRecentDigests,
   appendDigest,

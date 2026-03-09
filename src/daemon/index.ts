@@ -33,7 +33,12 @@ export type {
 export { handleTimeout } from "./transcript.js";
 
 // Re-export gateway functions
-export { startGateway, stopGateway, getLastActiveChatId } from "./gateway.js";
+export {
+  startGateway,
+  stopGateway,
+  getLastActiveChatId,
+  getLastMessageTimestamp,
+} from "./gateway.js";
 
 // Re-export background agent
 export { spawnBackgroundAgent } from "./background-agent.js";

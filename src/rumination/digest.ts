@@ -4,7 +4,7 @@
  * Handles append, read-recent, and trim operations.
  */
 
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { KLAUSBOT_HOME } from "../memory/home.js";
 
@@ -133,7 +133,6 @@ export function consumePendingDigest(): string | null {
 
   // Remove the pending file
   try {
-    const { unlinkSync } = require("fs");
     unlinkSync(pendingPath);
   } catch {
     // Ignore removal errors

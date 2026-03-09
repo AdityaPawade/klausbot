@@ -122,6 +122,7 @@ export async function registerSkillCommands(
     { command: "status", description: "Show queue status" },
     { command: "project", description: "Switch between projects" },
     { command: "remember", description: "Add to project memory" },
+    { command: "ruminate", description: "Trigger strategic intelligence scan" },
   ];
 
   // Skill commands with sanitized names

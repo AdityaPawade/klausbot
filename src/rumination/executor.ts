@@ -54,8 +54,7 @@ function buildRuminationPrompt(
 
   const briefsXml = briefs
     .map(
-      (b) =>
-        `<project name="${b.project}">\n${b.content.trim()}\n</project>`,
+      (b) => `<project name="${b.project}">\n${b.content.trim()}\n</project>`,
     )
     .join("\n\n");
 
@@ -238,7 +237,10 @@ async function deliverOrDefer(
           });
         } catch {
           // HTML failed, send plain
-          await bot.api.sendMessage(targetChatId, chunk.replace(/<[^>]*>/g, ""));
+          await bot.api.sendMessage(
+            targetChatId,
+            chunk.replace(/<[^>]*>/g, ""),
+          );
         }
       }
 

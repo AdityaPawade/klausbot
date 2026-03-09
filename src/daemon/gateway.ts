@@ -1077,7 +1077,9 @@ export async function startGateway(): Promise<void> {
     const chatId = ctx.chat?.id;
     if (!chatId) return;
 
-    await ctx.reply("Scanning for strategic intelligence... this may take a few minutes.");
+    await ctx.reply(
+      "Scanning for strategic intelligence... this may take a few minutes.",
+    );
     log.info({ chatId }, "Manual rumination triggered");
 
     triggerRumination().catch((err) => {
