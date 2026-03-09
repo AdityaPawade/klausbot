@@ -120,6 +120,8 @@ export async function registerSkillCommands(
     { command: "start", description: "Start or check pairing" },
     { command: "help", description: "Show available commands" },
     { command: "status", description: "Show queue status" },
+    { command: "project", description: "Switch between projects" },
+    { command: "remember", description: "Add to project memory" },
   ];
 
   // Skill commands with sanitized names

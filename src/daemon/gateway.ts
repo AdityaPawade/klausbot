@@ -26,9 +26,9 @@ import {
   getPairingStore,
 } from "../pairing/index.js";
 import { InlineKeyboard } from "grammy";
-import { existsSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import { KLAUSBOT_HOME } from "../memory/home.js";
+import { KLAUSBOT_HOME, getHomePath } from "../memory/home.js";
 import {
   createChildLogger,
   sendLongMessage,
@@ -361,6 +361,41 @@ function buildPromptWithMedia(text: string, media: MediaAttachment[]): string {
   }
 
   return prompt;
+}
+
+/**
+ * Build a prompt for the /remember command.
+ * Instructs Claude to merge the new info into USER.md, simplify related context,
+ * and report exactly what was added, modified, or removed.
+ */
+function buildRememberPrompt(
+  newMemory: string,
+  currentContent: string,
+): string {
+  const hasExisting = currentContent.trim().length > 0;
+
+  return `<remember-task>
+You have been asked to update the project memory file (identity/USER.md) with the following new information:
+
+"${newMemory}"
+
+${hasExisting ? `Current USER.md content:\n\`\`\`\n${currentContent}\n\`\`\`` : "USER.md is empty or does not exist yet."}
+
+## Instructions
+
+1. Read the current identity/USER.md file
+2. Merge the new information into the appropriate section (Preferences or Context)
+3. If any existing entries are related to or overlap with the new information, **simplify and consolidate** them — remove redundancy, combine related items, resolve contradictions (new info wins)
+4. Write the updated file back to identity/USER.md
+5. Respond with a brief summary showing:
+   - What was **added** (new entries)
+   - What was **changed** (simplified/consolidated entries, show before → after)
+   - What was **removed** (redundant entries that were folded in)
+
+   Keep the response concise — just the changes, no fluff.
+
+Do NOT announce what you're doing. Just update the file and show the changes.
+</remember-task>`;
 }
 
 /**
@@ -935,12 +970,53 @@ export async function startGateway(): Promise<void> {
     await ctx.reply(`${label}${detail}`, { parse_mode: "Markdown" });
   });
 
+  bot.command("remember", async (ctx: MyContext) => {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    const arg = (ctx.match as string)?.trim() || "";
+    if (!arg) {
+      await ctx.reply(
+        "_Usage:_ `/remember <something to remember>`\n\nAdds to project memory, simplifies related context, and shows what changed.",
+        { parse_mode: "Markdown" },
+      );
+      return;
+    }
+
+    // Read current USER.md content for injection
+    const userMdPath = getHomePath("identity", "USER.md");
+    let currentMemory = "";
+    if (existsSync(userMdPath)) {
+      try {
+        currentMemory = readFileSync(userMdPath, "utf-8");
+      } catch {
+        // Proceed with empty memory
+      }
+    }
+
+    // Build the remember prompt — Claude will edit USER.md and report changes
+    const rememberPrompt = buildRememberPrompt(arg, currentMemory);
+
+    const threading: ThreadingContext = {
+      messageThreadId: ctx.msg?.message_thread_id,
+      replyToMessageId: ctx.msg?.message_id,
+    };
+
+    const queueId = queue.add(chatId, rememberPrompt, undefined, threading);
+    log.info({ chatId, queueId, remember: arg }, "Remember command queued");
+
+    processQueue().catch((err) => {
+      log.error({ err }, "Queue processing error");
+    });
+  });
+
   bot.command("help", async (ctx: MyContext) => {
     const helpMsg = [
       "*Available Commands*",
       "/start - Request pairing or check status",
       "/status - Show queue and approval status",
       "/project - Switch between projects",
+      "/remember - Add something to project memory",
       "/model - Show current model info",
       "/crons - List scheduled tasks",
       "/help - Show this help message",
@@ -1389,10 +1465,14 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
       !isBootstrap && (jsonConfig.subagents?.enabled ?? true);
 
     if (!isBootstrap) {
-      // Chat ID context for cron and background tasks
+      // Chat ID and project context
+      const activeProjectName = getActiveProject();
+      const projectContext = activeProjectName
+        ? `\nActive project: ${activeProjectName}\nAll identity files, database, tasks, and memory are scoped to this project.`
+        : "";
       const chatIdContext = `<session-context>
 Current chat ID: ${msg.chatId}
-Use this chatId when creating cron jobs or background tasks.
+Use this chatId when creating cron jobs or background tasks.${projectContext}
 </session-context>`;
 
       // Conversation history injection
