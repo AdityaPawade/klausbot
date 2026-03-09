@@ -79,6 +79,19 @@ export const jsonConfigSchema = z
         enabled: z.boolean().default(true),
       })
       .default({ enabled: true }),
+    /** Rumination configuration for autonomous strategic intelligence scanning */
+    rumination: z
+      .object({
+        /** Enable rumination scanning (default: true) */
+        enabled: z.boolean().default(true),
+        /** Interval between scans in ms (min 1h, default 24h) */
+        intervalMs: z.number().min(3600000).default(86400000),
+        /** Explicit target chatId override */
+        chatId: z.number().optional(),
+        /** Maximum items per digest (1-20, default: 7) */
+        maxDigestItems: z.number().min(1).max(20).default(7),
+      })
+      .default({ enabled: true, intervalMs: 86400000, maxDigestItems: 7 }),
     /** Rescue-on-timeout configuration for streaming and batch paths */
     rescue: z
       .object({

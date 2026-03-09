@@ -66,6 +66,11 @@ import {
   getNoteCollectionInstructions,
 } from "../heartbeat/index.js";
 import {
+  startRumination,
+  stopRumination,
+  triggerRumination,
+} from "../rumination/index.js";
+import {
   startTaskWatcher,
   getActiveTasks,
   markTaskFailed,
@@ -185,6 +190,14 @@ let lastActiveChatId: number | null = null;
 /** Get the most recently active chatId (null if no messages received yet) */
 export function getLastActiveChatId(): number | null {
   return lastActiveChatId;
+}
+
+/** Timestamp of the last user message (for idle detection) */
+let lastMessageTimestamp: number = 0;
+
+/** Get the timestamp of the last user message (0 if none) */
+export function getLastMessageTimestamp(): number {
+  return lastMessageTimestamp;
 }
 
 /** Bot instance (loaded dynamically after config validation) */
@@ -565,6 +578,10 @@ export async function startGateway(): Promise<void> {
   // Initialize heartbeat system
   startHeartbeat();
   log.info("Heartbeat scheduler initialized");
+
+  // Initialize rumination system
+  startRumination();
+  log.info("Rumination scheduler initialized");
 
   // Initialize background task watcher
   stopTaskWatcher = startTaskWatcher({
@@ -1056,6 +1073,18 @@ export async function startGateway(): Promise<void> {
     });
   });
 
+  bot.command("ruminate", async (ctx: MyContext) => {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    await ctx.reply("Scanning for strategic intelligence... this may take a few minutes.");
+    log.info({ chatId }, "Manual rumination triggered");
+
+    triggerRumination().catch((err) => {
+      log.error({ err }, "Manual rumination error");
+    });
+  });
+
   bot.command("help", async (ctx: MyContext) => {
     const helpMsg = [
       "*Available Commands*",
@@ -1063,6 +1092,7 @@ export async function startGateway(): Promise<void> {
       "/status - Show queue and approval status",
       "/project - Switch between projects",
       "/remember - Add something to project memory",
+      "/ruminate - Trigger strategic intelligence scan",
       "/model - Show current model info",
       "/crons - List scheduled tasks",
       "/help - Show this help message",
@@ -1401,6 +1431,9 @@ export async function stopGateway(): Promise<void> {
   // Stop heartbeat scheduler
   stopHeartbeat();
 
+  // Stop rumination scheduler
+  stopRumination();
+
   // Stop background task watcher
   if (stopTaskWatcher) {
     stopTaskWatcher();
@@ -1518,6 +1551,7 @@ async function processQueue(): Promise<void> {
  */
 async function processMessage(msg: QueuedMessage): Promise<void> {
   lastActiveChatId = msg.chatId;
+  lastMessageTimestamp = Date.now();
   const startTime = Date.now();
 
   // Send typing indicator continuously while processing
