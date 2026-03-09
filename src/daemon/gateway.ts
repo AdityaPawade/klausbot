@@ -77,6 +77,7 @@ import {
   transcribeAudio,
   isTranscriptionAvailable,
   saveImage,
+  saveDocument,
   withRetry,
   downloadFile,
 } from "../media/index.js";
@@ -323,6 +324,36 @@ async function processMedia(
           "Image save failed",
         );
       }
+    } else if (attachment.type === "document") {
+      if (!attachment.localPath) {
+        errors.push("Document file not downloaded");
+        continue;
+      }
+
+      try {
+        const savedPath = saveDocument(
+          attachment.localPath,
+          attachment.originalFilename ?? "document",
+        );
+
+        processed.push({
+          ...attachment,
+          localPath: savedPath,
+          processingTimeMs: Date.now() - startTime,
+        });
+
+        log.info(
+          { type: "document", savedPath, mimeType: attachment.mimeType },
+          "Saved document",
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`Failed to save document: ${msg}`);
+        log.error(
+          { err, localPath: attachment.localPath },
+          "Document save failed",
+        );
+      }
     }
   }
 
@@ -358,6 +389,21 @@ function buildPromptWithMedia(text: string, media: MediaAttachment[]): string {
       .join("\n");
 
     prompt = `The user sent ${imagePaths.length} image(s). Read and analyze them using your Read tool:\n${imageInstructions}\n\n${prompt || "(no text, just the image(s))"}`;
+  }
+
+  // Add document references for Claude to read (PDFs, text files, etc.)
+  const documentMedia = media.filter(
+    (m) => m.type === "document" && m.localPath,
+  );
+  if (documentMedia.length > 0) {
+    const docInstructions = documentMedia
+      .map((m, i) => {
+        const name = m.originalFilename ?? `Document ${i + 1}`;
+        return `${name}: ${m.localPath}`;
+      })
+      .join("\n");
+
+    prompt = `The user sent ${documentMedia.length} document(s). Read and analyze them using your Read tool:\n${docInstructions}\n\n${prompt || "(no text, just the document(s))"}`;
   }
 
   return prompt;
@@ -1198,6 +1244,68 @@ export async function startGateway(): Promise<void> {
     }
   });
 
+  // Document message handler (PDFs, text files, etc.)
+  bot.on("message:document", async (ctx: MyContext) => {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return;
+
+    const doc = ctx.message?.document;
+    if (!doc) return;
+
+    const fileName = doc.file_name ?? "document";
+    const mimeType = doc.mime_type ?? "";
+
+    log.info(
+      {
+        chatId,
+        fileId: doc.file_id,
+        fileName,
+        mimeType,
+        fileSize: doc.file_size,
+      },
+      "Received document message",
+    );
+
+    // Determine extension from filename or mime type
+    const ext =
+      path.extname(fileName) || (mimeType === "application/pdf" ? ".pdf" : "");
+    const tempPath = path.join(os.tmpdir(), `klausbot-doc-${Date.now()}${ext}`);
+
+    try {
+      await downloadFile(bot, doc.file_id, tempPath);
+
+      const media: MediaAttachment[] = [
+        {
+          type: "document",
+          fileId: doc.file_id,
+          localPath: tempPath,
+          mimeType,
+          originalFilename: fileName,
+        },
+      ];
+
+      const text = ctx.message?.caption ?? "";
+      const threading: ThreadingContext = {
+        messageThreadId: ctx.msg?.message_thread_id,
+        replyToMessageId: ctx.msg?.message_id,
+      };
+
+      const queueId = queue.add(chatId, text, media, threading);
+      log.info(
+        { chatId, queueId, fileName, mimeType, hasCaption: !!text },
+        "Document message queued",
+      );
+
+      processQueue().catch((err) => {
+        log.error({ err }, "Queue processing error");
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error({ err, chatId, fileName }, "Failed to download document");
+      await ctx.reply(`Failed to process document: ${msg}`);
+    }
+  });
+
   // Catch-all for unsupported message types
   bot.on("message", async (ctx: MyContext) => {
     const chatId = ctx.chat?.id;
@@ -1240,6 +1348,7 @@ export async function startGateway(): Promise<void> {
           "text",
           "voice",
           "photo",
+          "document",
           "caption",
           "entities",
           "message_thread_id",
@@ -1251,7 +1360,7 @@ export async function startGateway(): Promise<void> {
     log.info({ chatId, messageType }, "Received unsupported message type");
 
     await ctx.reply(
-      "I can process text, voice messages, and photos. Other message types are not yet supported.",
+      "I can process text, voice messages, photos, and documents (PDFs, etc.). Other message types are not yet supported.",
     );
   });
 

@@ -13,7 +13,7 @@ export { downloadFile, hydrateFilesOnBot } from "./download.js";
 export { transcribeAudio, isTranscriptionAvailable } from "./transcribe.js";
 
 // Storage
-export { saveImage, getImageDir } from "./storage.js";
+export { saveImage, saveDocument, getImageDir } from "./storage.js";
 
 // Retry
 export { withRetry, isTransientError } from "./retry.js";

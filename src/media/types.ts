@@ -3,7 +3,7 @@
  */
 
 /** Supported media types */
-export type MediaType = "voice" | "photo";
+export type MediaType = "voice" | "photo" | "document";
 
 /** Attachment with optional processing results */
 export interface MediaAttachment {
@@ -12,6 +12,7 @@ export interface MediaAttachment {
   localPath?: string;
   transcript?: string;
   mimeType?: string;
+  originalFilename?: string;
   processingTimeMs?: number;
 }
 

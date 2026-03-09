@@ -53,3 +53,43 @@ export function saveImage(
     throw new Error(`Failed to save image: ${message}`);
   }
 }
+
+/**
+ * Save a document (PDF, etc.) to dated directory with unique filename
+ * Preserves original filename as prefix for readability
+ * @param sourcePath - Path to downloaded temp file
+ * @param originalFilename - Original filename from Telegram
+ * @returns Absolute path to saved document
+ * @throws Error if copy fails
+ */
+export function saveDocument(
+  sourcePath: string,
+  originalFilename: string,
+): string {
+  const dir = getImageDir(); // reuse dated media directory
+
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+
+  const ext = extname(originalFilename) || "";
+  // Keep original name prefix for readability, add UUID to avoid collisions
+  const baseName = originalFilename
+    .replace(ext, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
+  const filename = `${baseName}-${randomUUID().slice(0, 8)}${ext}`;
+  const destination = join(dir, filename);
+
+  try {
+    copyFileSync(sourcePath, destination);
+    const size = statSync(destination).size;
+    log.info(
+      { source: sourcePath, destination, size, originalFilename },
+      "document saved",
+    );
+    return destination;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to save document: ${message}`);
+  }
+}
