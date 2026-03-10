@@ -1111,6 +1111,29 @@ export async function startGateway(): Promise<void> {
     await ctx.reply(helpMsg, { parse_mode: "Markdown" });
   });
 
+  /**
+   * Extract the text of the message being replied to (if any).
+   * Returns a context prefix like "[Replying to: <text>]\n" or "".
+   */
+  function getReplyContext(ctx: MyContext): string {
+    const reply = ctx.message?.reply_to_message;
+    if (!reply) return "";
+
+    // Collect text from the replied-to message
+    const replyText = reply.text ?? reply.caption ?? "";
+    if (!replyText.trim()) return "";
+
+    // Truncate long messages to keep context manageable
+    const MAX_REPLY_CONTEXT = 500;
+    const truncated =
+      replyText.length > MAX_REPLY_CONTEXT
+        ? replyText.slice(0, MAX_REPLY_CONTEXT) + "…"
+        : replyText;
+
+    const sender = reply.from?.first_name ?? "Unknown";
+    return `[Replying to ${sender}: ${truncated}]\n`;
+  }
+
   // 3. Message handler
   bot.on("message:text", async (ctx: MyContext) => {
     const chatId = ctx.chat?.id;
@@ -1122,7 +1145,10 @@ export async function startGateway(): Promise<void> {
     if (!rawText.trim()) return;
 
     // Translate skill commands: /skill_creator → /skill skill-creator
-    const text = translateSkillCommand(rawText);
+    const translated = translateSkillCommand(rawText);
+
+    // Prepend reply context if replying to a message
+    const text = getReplyContext(ctx) + translated;
 
     // Extract threading context for forum topics and reply linking
     const threading: ThreadingContext = {
@@ -1133,7 +1159,7 @@ export async function startGateway(): Promise<void> {
     // Add to queue - typing indicator shown by autoChatAction middleware
     const queueId = queue.add(chatId, text, undefined, threading);
     log.info(
-      { chatId, queueId, translated: text !== rawText },
+      { chatId, queueId, translated: translated !== rawText },
       "Message queued",
     );
 
@@ -1171,8 +1197,8 @@ export async function startGateway(): Promise<void> {
         },
       ];
 
-      // Voice messages don't have captions in Telegram
-      const text = "";
+      // Voice messages don't have captions — but may be replies
+      const text = getReplyContext(ctx);
 
       // Extract threading context for forum topics and reply linking
       const threading: ThreadingContext = {
@@ -1236,7 +1262,7 @@ export async function startGateway(): Promise<void> {
         mediaGroupBuffer.set(mediaGroupId, {
           chatId,
           fileIds: [largest.file_id],
-          caption: ctx.message?.caption ?? "",
+          caption: getReplyContext(ctx) + (ctx.message?.caption ?? ""),
           threading,
           timer,
         });
@@ -1259,7 +1285,7 @@ export async function startGateway(): Promise<void> {
           },
         ];
 
-        const text = ctx.message?.caption ?? "";
+        const text = getReplyContext(ctx) + (ctx.message?.caption ?? "");
         const threading: ThreadingContext = {
           messageThreadId: ctx.msg?.message_thread_id,
           replyToMessageId: ctx.msg?.message_id,
@@ -1267,7 +1293,7 @@ export async function startGateway(): Promise<void> {
 
         const queueId = queue.add(chatId, text, media, threading);
         log.info(
-          { chatId, queueId, mediaCount: 1, hasCaption: !!text },
+          { chatId, queueId, mediaCount: 1, hasCaption: !!text.trim() },
           "Photo message queued",
         );
 
@@ -1322,7 +1348,7 @@ export async function startGateway(): Promise<void> {
         },
       ];
 
-      const text = ctx.message?.caption ?? "";
+      const text = getReplyContext(ctx) + (ctx.message?.caption ?? "");
       const threading: ThreadingContext = {
         messageThreadId: ctx.msg?.message_thread_id,
         replyToMessageId: ctx.msg?.message_id,
