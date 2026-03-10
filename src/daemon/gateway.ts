@@ -832,6 +832,12 @@ export async function startGateway(): Promise<void> {
           log.error({ err, chatId }, "Failed to send retry keyboard");
         }
       },
+      onAutoRetry: async (chatId, originalMessage, opts) => {
+        log.info({ chatId }, "Auto-retrying empty-output message");
+        queue.add(chatId, originalMessage, undefined, {
+          messageThreadId: opts?.messageThreadId,
+        });
+      },
       onConflict: async (
         chatId,
         existingDesc,

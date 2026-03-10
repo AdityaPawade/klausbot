@@ -52,6 +52,12 @@ export interface RescueMonitorCallbacks {
     reason: string,
     opts?: { messageThreadId?: number },
   ) => Promise<void>;
+  /** Called to auto-retry a message that produced empty output */
+  onAutoRetry?: (
+    chatId: number,
+    originalMessage: string,
+    opts?: { messageThreadId?: number },
+  ) => Promise<void>;
   /** Called when at capacity and a new process wants to register */
   onConflict?: (
     chatId: number,
@@ -112,6 +118,8 @@ interface PendingRegistration {
 export class RescueMonitor {
   private tracked = new Map<string, TrackedProcess>();
   private pendingRegistrations = new Map<string, PendingRegistration>();
+  /** Chat IDs with auto-retried messages — next empty output triggers failure */
+  private retryingChats = new Set<number>();
   private callbacks: RescueMonitorCallbacks;
   private config: RescueMonitorConfig;
 
@@ -448,6 +456,9 @@ export class RescueMonitor {
       "Rescued process completed",
     );
 
+    // Clear retry tracking on successful output
+    this.retryingChats.delete(tracked.context.chatId);
+
     // Send any remaining text, splitting if needed
     const remaining = response.result.slice(tracked.lastSentLength);
     if (remaining.trim()) {
@@ -468,11 +479,45 @@ export class RescueMonitor {
         }
       }
     } else if (tracked.lastSentLength === 0 && !response.result.trim()) {
-      // Nothing was ever sent to the user — offer retry
-      log.warn({ id }, "Rescued process produced empty output");
+      // Nothing was ever sent to the user
+      const chatId = tracked.context.chatId;
+      const alreadyRetried = this.retryingChats.has(chatId);
+
+      // Auto-retry once before showing failure keyboard
+      if (!alreadyRetried && this.callbacks.onAutoRetry) {
+        log.warn(
+          { id },
+          "Rescued process produced empty output, auto-retrying",
+        );
+        this.retryingChats.add(chatId);
+        this.cleanup(id);
+        try {
+          await this.callbacks.onAutoRetry(
+            chatId,
+            tracked.context.originalMessage,
+            { messageThreadId: tracked.context.messageThreadId },
+          );
+        } catch (err) {
+          log.error({ err, id }, "Auto-retry failed, showing retry keyboard");
+          this.retryingChats.delete(chatId);
+          try {
+            await this.callbacks.onFailure(
+              chatId,
+              tracked.context.originalMessage,
+              "Process completed with no output",
+              { messageThreadId: tracked.context.messageThreadId },
+            );
+          } catch (failErr) {
+            log.error({ failErr, id }, "Failed to send failure notification");
+          }
+        }
+        return;
+      }
+      this.retryingChats.delete(chatId);
+      log.warn({ id }, "Rescued process produced empty output (after retry)");
       try {
         await this.callbacks.onFailure(
-          tracked.context.chatId,
+          chatId,
           tracked.context.originalMessage,
           "Process completed with no output",
           { messageThreadId: tracked.context.messageThreadId },
