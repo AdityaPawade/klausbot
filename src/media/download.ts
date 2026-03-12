@@ -35,21 +35,43 @@ export async function downloadFile(
   fileId: string,
   destPath: string,
 ): Promise<string> {
-  try {
-    log.debug({ fileId, destPath }, "downloading file");
+  const MAX_RETRIES = 3;
 
-    // Get file info from Telegram (hydrateFiles adds download method at runtime)
-    const file = await bot.api.getFile(fileId);
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      log.debug({ fileId, destPath, attempt }, "downloading file");
 
-    // Download to local path (method added by hydrateFiles plugin)
-    const hydratedFile = file as typeof file & HydratedFile;
-    await hydratedFile.download(destPath);
+      // Get file info from Telegram (hydrateFiles adds download method at runtime)
+      const file = await bot.api.getFile(fileId);
 
-    log.info({ fileId, destPath }, "file downloaded");
-    return destPath;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    log.error({ fileId, destPath, error: message }, "download failed");
-    throw new Error(`Failed to download file ${fileId}: ${message}`);
+      // Download to local path (method added by hydrateFiles plugin)
+      const hydratedFile = file as typeof file & HydratedFile;
+      await hydratedFile.download(destPath);
+
+      log.info({ fileId, destPath }, "file downloaded");
+      return destPath;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isTransient =
+        message.includes("EAI_AGAIN") ||
+        message.includes("ETIMEDOUT") ||
+        message.includes("ECONNRESET");
+
+      if (isTransient && attempt < MAX_RETRIES) {
+        const delayMs = attempt * 2000;
+        log.warn(
+          { fileId, attempt, error: message, retryInMs: delayMs },
+          "Transient download error, retrying",
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+        continue;
+      }
+
+      log.error({ fileId, destPath, error: message }, "download failed");
+      throw new Error(`Failed to download file ${fileId}: ${message}`);
+    }
   }
+
+  // Unreachable, but TypeScript needs it
+  throw new Error(`Failed to download file ${fileId}: max retries exceeded`);
 }
