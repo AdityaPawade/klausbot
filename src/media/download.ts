@@ -50,25 +50,42 @@ export async function downloadFile(
 
       log.info({ fileId, destPath }, "file downloaded");
       return destPath;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+    } catch (error: unknown) {
+      // Extract message from any error shape (grammY may throw non-Error objects)
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null
+            ? JSON.stringify(error)
+            : String(error);
+
       const isTransient =
         message.includes("EAI_AGAIN") ||
         message.includes("ETIMEDOUT") ||
-        message.includes("ECONNRESET");
+        message.includes("ECONNRESET") ||
+        message.includes("ECONNREFUSED") ||
+        message.includes("fetch failed") ||
+        message.includes("network") ||
+        message === "" || // Empty error = likely network issue
+        message === "{}";
 
       if (isTransient && attempt < MAX_RETRIES) {
         const delayMs = attempt * 2000;
         log.warn(
-          { fileId, attempt, error: message, retryInMs: delayMs },
+          { fileId, attempt, error: message || "(empty)", retryInMs: delayMs },
           "Transient download error, retrying",
         );
         await new Promise((r) => setTimeout(r, delayMs));
         continue;
       }
 
-      log.error({ fileId, destPath, error: message }, "download failed");
-      throw new Error(`Failed to download file ${fileId}: ${message}`);
+      log.error(
+        { fileId, destPath, error: message || "(empty)" },
+        "download failed",
+      );
+      throw new Error(
+        `Failed to download file ${fileId}: ${message || "(unknown error)"}`,
+      );
     }
   }
 
