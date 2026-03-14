@@ -57,6 +57,8 @@ export interface StreamOptions {
   timeout?: number;
   /** Inactivity timeout after first activity — resets on each event (default: none) */
   inactivityTimeoutMs?: number;
+  /** Session ID to resume — uses --resume for full context continuity */
+  resumeSessionId?: string;
 }
 
 /** Result from streaming Claude response */
@@ -115,20 +117,26 @@ export async function streamClaudeResponse(
   const mcpConfigPath = writeMcpConfigFile();
   const settingsJson = JSON.stringify(getHooksConfig());
 
-  const args = [
-    "--dangerously-skip-permissions",
-    "-p",
-    wrappedPrompt,
+  const isResume = !!options.resumeSessionId;
+  const args: string[] = ["--dangerously-skip-permissions"];
+
+  if (isResume) {
+    // Resume existing session — Claude loads full prior context
+    args.push("--resume", options.resumeSessionId!, "-p", wrappedPrompt);
+  } else {
+    // Fresh session — include system prompt with all context
+    args.push("-p", wrappedPrompt, "--system-prompt", systemPrompt);
+  }
+
+  args.push(
     "--output-format",
     "stream-json",
     "--verbose",
-    "--system-prompt",
-    systemPrompt,
     "--mcp-config",
     mcpConfigPath,
     "--settings",
     settingsJson,
-  ];
+  );
 
   if (options.model) {
     args.push("--model", options.model);
@@ -434,6 +442,8 @@ export interface StreamToTelegramOptions {
   timeout?: number;
   /** Inactivity timeout after first activity — resets on each event */
   inactivityTimeoutMs?: number;
+  /** Session ID to resume — uses --resume for full context continuity */
+  resumeSessionId?: string;
 }
 
 /**
@@ -519,6 +529,7 @@ export async function streamToTelegram(
         onRescue: options?.onRescue,
         timeout: options?.timeout,
         inactivityTimeoutMs: options?.inactivityTimeoutMs,
+        resumeSessionId: options?.resumeSessionId,
       },
       onChunk,
     );

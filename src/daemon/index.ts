@@ -44,6 +44,14 @@ export {
 export { spawnBackgroundAgent } from "./background-agent.js";
 export type { BackgroundAgentOptions } from "./background-agent.js";
 
+// Re-export session tracker
+export {
+  recordSession,
+  getResumableSession,
+  clearSession,
+  clearAllSessions,
+} from "./session-tracker.js";
+
 // Re-export media types for consumers
 export type { MediaAttachment } from "../media/index.js";
 

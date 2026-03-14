@@ -10,6 +10,9 @@ import {
   queryClaudeCode,
   ensureDataDir,
   spawnBackgroundAgent,
+  recordSession,
+  getResumableSession,
+  clearSession,
   type ToolUseEntry,
 } from "./index.js";
 import {
@@ -1641,8 +1644,20 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
     const backgroundAgentsEnabled =
       !isBootstrap && (jsonConfig.subagents?.enabled ?? true);
 
+    // Check for resumable session — if found, Claude already has full context
+    const resumeSessionId = isBootstrap
+      ? undefined
+      : (getResumableSession(msg.chatId) ?? undefined);
+
+    if (resumeSessionId) {
+      log.info(
+        { chatId: msg.chatId, resumeSessionId },
+        "Resuming existing Claude session",
+      );
+    }
+
     if (!isBootstrap) {
-      // Chat ID and project context
+      // Chat ID and project context — always needed (even on resume, as lightweight reminder)
       const activeProjectName = getActiveProject();
       const projectContext = activeProjectName
         ? `\nActive project: ${activeProjectName}\nAll identity files, database, tasks, and memory are scoped to this project.`
@@ -1652,22 +1667,24 @@ Current chat ID: ${msg.chatId}
 Use this chatId when creating cron jobs or background tasks.${projectContext}
 </session-context>`;
 
-      // Conversation history injection
+      // Conversation history — skip when resuming (session already has full context)
       let conversationContext = "";
-      try {
-        conversationContext = buildConversationContext(msg.chatId);
-        if (conversationContext) {
-          log.debug(
-            { chatId: msg.chatId, contextLength: conversationContext.length },
-            "Injected conversation context",
+      if (!resumeSessionId) {
+        try {
+          conversationContext = buildConversationContext(msg.chatId);
+          if (conversationContext) {
+            log.debug(
+              { chatId: msg.chatId, contextLength: conversationContext.length },
+              "Injected conversation context",
+            );
+          }
+        } catch (err) {
+          log.warn(
+            { err, chatId: msg.chatId },
+            "Failed to build conversation context",
           );
+          // Non-fatal: continue without history
         }
-      } catch (err) {
-        log.warn(
-          { err, chatId: msg.chatId },
-          "Failed to build conversation context",
-        );
-        // Non-fatal: continue without history
       }
 
       // Heartbeat note collection
@@ -1678,9 +1695,9 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
         log.info({ chatId: msg.chatId }, "Heartbeat note collection triggered");
       }
 
-      // Background agent orchestration
+      // Background agent orchestration — skip on resume (already in session context)
       let orchestrationInstructions = "";
-      if (backgroundAgentsEnabled) {
+      if (backgroundAgentsEnabled && !resumeSessionId) {
         orchestrationInstructions = "\n\n" + getOrchestrationInstructions();
       }
 
@@ -1721,6 +1738,7 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
           {
             model: jsonConfig.model,
             additionalInstructions,
+            resumeSessionId,
             messageThreadId: msg.threading?.messageThreadId,
             chatId: msg.chatId,
             replyToMessageId: msg.threading?.replyToMessageId,
@@ -1746,6 +1764,10 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
 
         // Handle rescued streaming response
         if (streamResult.rescued && streamRescueHandle && rescueMonitor) {
+          // Record session even on rescue — process is still running with this session
+          if (streamResult.session_id) {
+            recordSession(msg.chatId, streamResult.session_id);
+          }
           queue.complete(msg.id);
 
           // Send partial text if streaming didn't already show it
@@ -1810,6 +1832,11 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
           }
 
           return; // Exit — rescue monitor handles the rest
+        }
+
+        // Record session for future --resume continuity
+        if (streamResult.session_id) {
+          recordSession(msg.chatId, streamResult.session_id);
         }
 
         // Check for background task delegation
@@ -1907,6 +1934,7 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
 
     const response = await queryClaudeCode(effectiveText, {
       additionalInstructions,
+      resumeSessionId,
       model: jsonConfig.model,
       chatId: msg.chatId,
       timeout: useRescue ? rescueConfig.safetyTimeoutMs : undefined,
@@ -1926,6 +1954,10 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
 
     // Handle rescued response — send partial, register with monitor, unblock queue
     if (response.rescued && rescueHandle && rescueMonitor) {
+      // Record session even on rescue — process is still running with this session
+      if (response.session_id) {
+        recordSession(msg.chatId, response.session_id);
+      }
       queue.complete(msg.id);
 
       // Send partial text accumulated so far
@@ -1974,6 +2006,11 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
       return;
     }
 
+    // Record session for future --resume continuity
+    if (response.session_id) {
+      recordSession(msg.chatId, response.session_id);
+    }
+
     // Check for background task delegation
     if (backgroundAgentsEnabled) {
       maybeSpawnBackgroundAgent(
@@ -1989,6 +2026,8 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
 
     // Send response (handles splitting for long messages)
     if (response.is_error) {
+      // Clear session on error so next attempt starts fresh
+      clearSession(msg.chatId);
       await bot.api.sendMessage(
         msg.chatId,
         `Error (Claude): ${response.result}`,
@@ -2094,6 +2133,9 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
         log.error({ retryErr, chatId: msg.chatId }, "Cannot reach user at all");
       }
     }
+
+    // Clear session on error so next attempt starts fresh
+    clearSession(msg.chatId);
 
     // Mark as failed
     queue.fail(msg.id, error.message);

@@ -297,16 +297,18 @@ function extractEntryText(entry: {
 }
 
 /**
- * Format a conversation as full transcript XML
+ * Format a conversation as structured conversation turns.
+ * Uses H/A (Human/Assistant) turn markers that the model recognizes
+ * as prior dialogue rather than passive text context.
  */
 function formatFullTranscript(conv: ConversationRecord): string {
   const entries = parseTranscript(conv.transcript);
   const relativeTime = getRelativeTimeLabel(conv.endedAt);
 
-  const messages = entries
+  const turns = entries
     .filter((e) => e.type === "user" || e.type === "assistant")
     .map((e) => {
-      const role = e.type === "user" ? "human" : "you";
+      const role = e.type === "user" ? "Human" : "Assistant";
       const time = e.timestamp
         ? new Date(e.timestamp).toLocaleTimeString("en-US", {
             hour: "2-digit",
@@ -315,11 +317,14 @@ function formatFullTranscript(conv: ConversationRecord): string {
           })
         : "";
       const text = extractEntryText(e);
-      return `[${role}${time ? " " + time : ""}] ${text}`;
+      return `[${role}${time ? " " + time : ""}]\n${text}`;
     })
-    .filter((line) => line.trim().length > line.indexOf("]") + 2); // skip empty entries
+    .filter((turn) => {
+      const textStart = turn.indexOf("]\n") + 2;
+      return turn.slice(textStart).trim().length > 0;
+    });
 
-  return `<conversation timestamp="${conv.startedAt}" relative="${relativeTime}">\n${messages.join("\n")}\n</conversation>`;
+  return `<conversation timestamp="${conv.startedAt}" relative="${relativeTime}">\n${turns.join("\n\n")}\n</conversation>`;
 }
 
 /**

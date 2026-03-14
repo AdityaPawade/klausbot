@@ -156,6 +156,8 @@ export interface SpawnerOptions {
   onRescue?: (handle: RescueHandle) => void;
   /** Inactivity timeout after first activity — resets on each event (default: none) */
   inactivityTimeoutMs?: number;
+  /** Session ID to resume — uses --resume for full context continuity */
+  resumeSessionId?: string;
 }
 
 const DEFAULT_TIMEOUT = 90000; // 90 seconds — main agent is a fast dispatcher
@@ -189,8 +191,11 @@ export async function queryClaudeCode(
       timeout,
       model: options.model,
       cwd: KLAUSBOT_HOME,
+      resumeSessionId: options.resumeSessionId ?? null,
     },
-    "Spawning Claude Code",
+    options.resumeSessionId
+      ? "Resuming Claude Code session"
+      : "Spawning Claude Code",
   );
 
   return new Promise((resolve, reject) => {
@@ -229,20 +234,26 @@ export async function queryClaudeCode(
 
     // Build command arguments
     // Use stream-json to capture tool-use events (needed for empty-response context)
-    const args = [
-      "--dangerously-skip-permissions",
-      "-p",
-      wrappedPrompt,
+    const isResume = !!options.resumeSessionId;
+    const args: string[] = ["--dangerously-skip-permissions"];
+
+    if (isResume) {
+      // Resume existing session — Claude loads full prior context from session file
+      args.push("--resume", options.resumeSessionId!, "-p", wrappedPrompt);
+    } else {
+      // Fresh session — include system prompt with all context
+      args.push("-p", wrappedPrompt, "--system-prompt", systemPrompt);
+    }
+
+    args.push(
       "--output-format",
       "stream-json",
       "--verbose",
-      "--system-prompt",
-      systemPrompt,
       "--mcp-config",
       mcpConfigPath,
       "--settings",
       settingsJson,
-    ];
+    );
     if (options.model) {
       args.push("--model", options.model);
     }
