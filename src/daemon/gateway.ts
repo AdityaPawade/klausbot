@@ -404,7 +404,7 @@ function buildPromptWithMedia(text: string, media: MediaAttachment[]): string {
       .map((p, i) => `Image ${i + 1}: ${p}`)
       .join("\n");
 
-    prompt = `The user sent ${imagePaths.length} image(s). Read and analyze them using your Read tool:\n${imageInstructions}\n\n${prompt || "(no text, just the image(s))"}`;
+    prompt = `The user sent ${imagePaths.length} image(s). IMPORTANT: You MUST read ALL ${imagePaths.length} image(s) using your Read tool before responding — do not skip any:\n${imageInstructions}\n\n${prompt || "(no text, just the image(s))"}`;
   }
 
   // Add document references for Claude to read (PDFs, text files, etc.)
