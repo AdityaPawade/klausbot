@@ -65,6 +65,12 @@ export const jsonConfigSchema = z
             maxToolIterations: z.number().min(1).max(20).default(8),
             /** Token budget for context truncation (default: 24000) */
             contextTokens: z.number().min(2000).max(128000).default(24000),
+            /**
+             * Use Code Mode — expose a single executeJs tool over the MCP
+             * tool surface. Drastically reduces tokens and improves reliability
+             * on small models. Default: false (uses native tool calling).
+             */
+            codeMode: z.boolean().default(false),
           })
           .optional(),
       })

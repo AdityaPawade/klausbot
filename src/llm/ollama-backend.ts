@@ -26,7 +26,13 @@
 
 import { buildSystemPrompt } from "../memory/index.js";
 import { createChildLogger } from "../utils/logger.js";
-import { McpBridge } from "./mcp-bridge.js";
+import { McpBridge, type OllamaTool } from "./mcp-bridge.js";
+import {
+  CODE_MODE_TOOL,
+  buildCodeModeApiDoc,
+  executeJsSandboxed,
+  formatExecuteJsResult,
+} from "./code-mode.js";
 import {
   loadSession,
   newSessionId,
@@ -56,6 +62,12 @@ export interface OllamaBackendConfig {
   maxToolIterations?: number;
   /** Token budget for context truncation (default: 24000 — fits in 32k window with headroom) */
   contextTokens?: number;
+  /**
+   * Use Code Mode (Cloudflare-style): expose a single `executeJs` tool that
+   * runs JS calling `tools.<name>(...)` instead of N separate tool schemas.
+   * Massively reduces token use and improves reliability on small models.
+   */
+  codeMode?: boolean;
 }
 
 /** Ollama /api/chat request shape (OpenAI-compatible-ish) */
@@ -96,12 +108,15 @@ export class OllamaBackend implements LLMBackend {
 
   private bridge: McpBridge;
   private config: Required<OllamaBackendConfig>;
+  /** Cached typed-API doc string for Code Mode (built once per process) */
+  private _codeModeApiDoc: string | null = null;
 
   constructor(config: OllamaBackendConfig) {
     this.config = {
       baseUrl: "http://localhost:11434",
       maxToolIterations: 8,
       contextTokens: 24000,
+      codeMode: false,
       ...config,
     };
     this.bridge = new McpBridge();
@@ -177,8 +192,15 @@ export class OllamaBackend implements LLMBackend {
     rescued?: boolean;
   }> {
     await this.bridge.connect();
-    const tools = await this.bridge.listTools();
+    const allMcpTools = await this.bridge.listTools();
     const model = options.model ?? this.config.model;
+    // In Code Mode, the model only sees one tool (executeJs) but can call any
+    // MCP tool from inside the sandbox. The MCP tools list is hidden but used
+    // to build the system-prompt API documentation and to route calls.
+    const tools = this.config.codeMode ? [CODE_MODE_TOOL] : allMcpTools;
+    if (this.config.codeMode && !this._codeModeApiDoc) {
+      this._codeModeApiDoc = buildCodeModeApiDoc(allMcpTools);
+    }
 
     // Determine session
     let sessionId: string;
@@ -317,7 +339,28 @@ export class OllamaBackend implements LLMBackend {
               ? safeParseJson(tc.function.arguments)
               : (tc.function.arguments as Record<string, unknown>);
           toolUseEntries.push({ name: tc.function.name, input: args });
-          const text = await this.bridge.callTool(tc.function.name, args);
+
+          let text: string;
+          if (
+            this.config.codeMode &&
+            tc.function.name === CODE_MODE_TOOL.function.name
+          ) {
+            // Code Mode: run the JS in our sandbox, route inner tool calls to MCP
+            const code = (args.code as string) ?? "";
+            log.info(
+              { codePreview: code.slice(0, 200) },
+              "Executing code-mode JS",
+            );
+            const result = await executeJsSandboxed(
+              code,
+              this.bridge,
+              allMcpTools,
+            );
+            text = formatExecuteJsResult(result);
+          } else {
+            text = await this.bridge.callTool(tc.function.name, args);
+          }
+
           messages.push({
             role: "tool",
             name: tc.function.name,
@@ -371,12 +414,23 @@ export class OllamaBackend implements LLMBackend {
     const compact = [
       "You are klausbot, a Telegram personal assistant for Aditya.",
       "You speak warmly and concisely — replies are usually 1-3 sentences.",
-      "When the user asks for an action you can do via a tool (schedule a cron, search memory, run a background task, look up a past conversation), CALL the tool with valid arguments.",
+      this.config.codeMode
+        ? "When the user asks for an action a tool can perform, CALL `executeJs` with code that uses the `tools` API documented below. Do not try to emit raw tool-call JSON — only `executeJs` exists."
+        : "When the user asks for an action you can do via a tool (schedule a cron, search memory, run a background task, look up a past conversation), CALL the tool with valid arguments.",
       "When the user just chats, reply naturally without calling any tool.",
       "If you call tools, ALWAYS produce a final conversational text reply after the tool result so the user sees something. Never return empty.",
     ].join(" ");
 
     let sys = compact;
+    // In Code Mode, append the typed-API documentation so the model knows
+    // what's available inside `executeJs`.
+    if (this.config.codeMode) {
+      // We need the actual MCP tool list here, which buildSystemPromptText
+      // doesn't have. Stash it on the instance temporarily.
+      if (this._codeModeApiDoc) {
+        sys += "\n\n" + this._codeModeApiDoc;
+      }
+    }
     if (options.additionalInstructions) {
       sys += "\n\n" + options.additionalInstructions;
     }
