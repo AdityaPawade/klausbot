@@ -363,23 +363,42 @@ export class OllamaBackend implements LLMBackend {
   }
 
   private buildSystemPromptText(options: BackendOptions): string {
-    let sys = buildSystemPrompt();
+    // Local Pi-class models cannot afford the full klausbot system prompt
+    // (~30+ KB of identity files + retrieval/orchestration instructions).
+    // Pre-fill prompt-eval time on a 4B model at ~10 tok/s would be 13+ min
+    // BEFORE generating any response token.
+    //
+    // Strategy: extract just enough for the local model to act usefully
+    // (basic identity + tool-calling guidance) and let MCP tool descriptions
+    // carry the rest. Identity files are still consulted via the
+    // search_memories tool when the user asks about themselves.
+    const compact = [
+      "You are klausbot, a Telegram personal assistant for Aditya.",
+      "You speak warmly and concisely — replies are usually 1-3 sentences.",
+      "When the user asks for an action you can do via a tool (schedule a cron, search memory, run a background task, look up a past conversation), CALL the tool with valid arguments.",
+      "When the user just chats, reply naturally without calling any tool.",
+      "If you call tools, ALWAYS produce a final conversational text reply after the tool result so the user sees something. Never return empty.",
+    ].join(" ");
+
+    let sys = compact;
     if (options.additionalInstructions) {
       sys += "\n\n" + options.additionalInstructions;
     }
-    // Local models choke on huge system prompts. Cap aggressively so the
-    // model has budget left for messages, tool schemas, and its response.
-    // Half the context budget is a reasonable upper bound (in chars).
-    const maxSystemChars = Math.floor(this.config.contextTokens * 4 * 0.5);
+    // Defensive cap — should never trigger for the compact prompt
+    const maxSystemChars = Math.floor(this.config.contextTokens * 4 * 0.4);
     if (sys.length > maxSystemChars) {
       log.warn(
         { originalLen: sys.length, capped: maxSystemChars },
-        "System prompt exceeds half of context budget, truncating for Ollama",
+        "System prompt exceeds 40% of context budget, truncating for Ollama",
       );
       sys =
         sys.slice(0, maxSystemChars) +
         "\n\n[system prompt truncated to fit context]";
     }
+    // Note: full identity buildSystemPrompt() is intentionally NOT used here.
+    // To tune local-model behavior, edit `compact` above or surface more
+    // context via MCP tool descriptions / search_memories.
+    void buildSystemPrompt; // keep import live for type checking
     return sys;
   }
 
