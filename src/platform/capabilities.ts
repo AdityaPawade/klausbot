@@ -93,17 +93,22 @@ export const capabilities: Capability[] = [
         if (cfg.backend !== "ollama") return "ok";
         const url =
           cfg.backendConfig?.ollama?.baseUrl ?? "http://localhost:11434";
-        const model = cfg.backendConfig?.ollama?.model;
-        const res = await fetch(`${url}/api/tags`, { signal: AbortSignal.timeout(3000) });
-        if (!res.ok) return "missing";
-        const data = (await res.json()) as { models?: Array<{ name: string }> };
-        if (model && !data.models?.find((m) => m.name === model)) return "missing";
-        return "ok";
+        // Try OpenAI-compatible /v1/models first (works with Ollama, llama-server, vLLM, LM Studio)
+        const tryV1 = await fetch(`${url}/v1/models`, {
+          signal: AbortSignal.timeout(3000),
+        }).catch(() => null);
+        if (tryV1 && tryV1.ok) return "ok";
+        // Fallback to Ollama-native /api/tags
+        const tryTags = await fetch(`${url}/api/tags`, {
+          signal: AbortSignal.timeout(3000),
+        }).catch(() => null);
+        if (tryTags && tryTags.ok) return "ok";
+        return "missing";
       } catch {
         return "missing";
       }
     },
-    hint: "Start Ollama (`ollama serve`) and pull the configured model",
+    hint: "Start the configured engine (`ollama serve` or `llama-server -m model.gguf`) and ensure it is reachable at the configured baseUrl",
   },
   {
     id: "container-oauth",
