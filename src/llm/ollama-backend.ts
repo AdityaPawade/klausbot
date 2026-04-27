@@ -257,6 +257,22 @@ export class OllamaBackend implements LLMBackend {
     let finalText = "";
     while (iterations < this.config.maxToolIterations) {
       iterations += 1;
+      const totalMessageChars = messages.reduce(
+        (n, m) => n + m.content.length,
+        0,
+      );
+      const toolSchemaChars = JSON.stringify(tools).length;
+      log.info(
+        {
+          iteration: iterations,
+          messages: messages.length,
+          messagesChars: totalMessageChars,
+          toolSchemaChars,
+          model,
+          ctx: this.config.contextTokens,
+        },
+        "Calling Ollama",
+      );
 
       const reply = await this.callOllama(
         {
@@ -329,7 +345,7 @@ export class OllamaBackend implements LLMBackend {
       }
 
       // No tool calls — this is the final answer
-      finalText = reply.content;
+      finalText = stripThinkingBlocks(reply.content);
       break;
     }
 
@@ -449,6 +465,7 @@ export class OllamaBackend implements LLMBackend {
         }>
       | undefined;
 
+    let frameCount = 0;
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -461,6 +478,13 @@ export class OllamaBackend implements LLMBackend {
         if (!line) continue;
         try {
           const frame: OllamaStreamFrame = JSON.parse(line);
+          frameCount += 1;
+          if (frameCount === 1) {
+            log.info(
+              { firstFrame: line.slice(0, 200) },
+              "First Ollama stream frame received",
+            );
+          }
           const chunk = frame.message?.content ?? "";
           if (chunk) {
             aggregated += chunk;
@@ -468,8 +492,25 @@ export class OllamaBackend implements LLMBackend {
           }
           if (frame.message?.tool_calls && frame.message.tool_calls.length > 0) {
             toolCalls = frame.message.tool_calls;
+            log.info(
+              { tools: frame.message.tool_calls.map((c) => c.function.name) },
+              "Tool calls in stream frame",
+            );
           }
           if (frame.done) {
+            log.info(
+              {
+                frames: frameCount,
+                aggregatedLen: aggregated.length,
+                toolCalls: toolCalls?.length ?? 0,
+                done_reason: (frame as { done_reason?: string }).done_reason,
+                eval_count: (frame as { eval_count?: number }).eval_count,
+                total_duration_ms:
+                  (frame as { total_duration?: number }).total_duration ??
+                  0 / 1e6,
+              },
+              "Ollama stream complete",
+            );
             return { content: aggregated, tool_calls: toolCalls };
           }
         } catch (err) {
@@ -478,6 +519,10 @@ export class OllamaBackend implements LLMBackend {
       }
     }
 
+    log.warn(
+      { frames: frameCount, aggregatedLen: aggregated.length },
+      "Ollama stream ended without 'done' frame",
+    );
     return { content: aggregated, tool_calls: toolCalls };
   }
 }
@@ -488,4 +533,30 @@ function safeParseJson(s: string): Record<string, unknown> {
   } catch {
     return { _raw: s };
   }
+}
+
+/**
+ * Strip Qwen3-style chain-of-thought "thinking" blocks from a response.
+ *
+ * Qwen3 emits internal reasoning between <think> and </think> tags. The
+ * `think:false` request flag is supposed to suppress this but doesn't
+ * always work in streaming mode (Ollama renders the thinking content as
+ * regular content frames). Without filtering, the user sees several
+ * paragraphs of stream-of-consciousness BEFORE the actual reply.
+ *
+ * Behavior:
+ * - If a closing </think> tag is present, drop everything up to and
+ *   including the LAST occurrence — works whether or not the opening
+ *   <think> tag is present.
+ * - If no </think> tag, return content unchanged.
+ * - Trim leading/trailing whitespace from the final result.
+ */
+export function stripThinkingBlocks(text: string): string {
+  if (!text) return text;
+  const closeIdx = text.lastIndexOf("</think>");
+  if (closeIdx >= 0) {
+    return text.slice(closeIdx + "</think>".length).trim();
+  }
+  // Some models emit just `<think>...</think>` inline-deletable
+  return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
