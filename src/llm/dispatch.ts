@@ -54,6 +54,7 @@ async function resolveBackend(): Promise<LLMBackend> {
         maxToolIterations: ollamaCfg.maxToolIterations,
         contextTokens: ollamaCfg.contextTokens,
         codeMode: ollamaCfg.codeMode,
+        engineApi: ollamaCfg.engineApi,
       });
       break;
     }

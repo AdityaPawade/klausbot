@@ -71,6 +71,12 @@ export const jsonConfigSchema = z
              * on small models. Default: false (uses native tool calling).
              */
             codeMode: z.boolean().default(false),
+            /**
+             * Which engine API to speak. "openai" works for Ollama, llama-server,
+             * vLLM, LM Studio. "ollama" uses Ollama-only /api/chat with
+             * keep_alive/num_ctx/think extensions. Default: "openai".
+             */
+            engineApi: z.enum(["ollama", "openai"]).default("openai"),
           })
           .optional(),
       })

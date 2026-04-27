@@ -52,11 +52,11 @@ import type {
 
 const log = createChildLogger("ollama-backend");
 
-/** Configuration for the Ollama backend */
+/** Configuration for the Ollama / llama-server backend */
 export interface OllamaBackendConfig {
-  /** Ollama base URL (default: http://localhost:11434) */
+  /** Engine base URL (Ollama default: http://localhost:11434, llama-server default: http://localhost:8080) */
   baseUrl?: string;
-  /** Default model id (e.g. "qwen3:4b") */
+  /** Default model id — for Ollama use "qwen3:4b", for llama-server use any string (it serves the loaded model) */
   model: string;
   /** Max iterations of the tool-call loop per query (default: 8) */
   maxToolIterations?: number;
@@ -68,6 +68,13 @@ export interface OllamaBackendConfig {
    * Massively reduces token use and improves reliability on small models.
    */
   codeMode?: boolean;
+  /**
+   * Which inference engine API to speak. Both Ollama and llama-server accept
+   * OpenAI-compatible /v1/chat/completions, so use that for a single code path.
+   * "ollama" uses Ollama-only /api/chat (lets us pass keep_alive, num_ctx, think).
+   * Default: "openai" (compatible with Ollama, llama-server, vLLM, LM Studio).
+   */
+  engineApi?: "ollama" | "openai";
 }
 
 /** Ollama /api/chat request shape (OpenAI-compatible-ish) */
@@ -117,6 +124,7 @@ export class OllamaBackend implements LLMBackend {
       maxToolIterations: 8,
       contextTokens: 24000,
       codeMode: false,
+      engineApi: "openai",
       ...config,
     };
     this.bridge = new McpBridge();
@@ -280,28 +288,10 @@ export class OllamaBackend implements LLMBackend {
         "Calling Ollama",
       );
 
-      const reply = await this.callOllama(
-        {
-          model,
-          messages,
-          tools,
-          stream: true,
-          keep_alive: "30m", // keep model loaded between requests
-          options: {
-            // Default Ollama context is 4096 — too small for klausbot's full
-            // system prompt + tool schemas + history. Bump to fit.
-            num_ctx: this.config.contextTokens,
-            temperature: 0.3,
-            // Qwen3 emits a multi-paragraph "thinking" block before its real
-            // answer. On a Pi 5 CPU each thinking token is ~200ms, so we
-            // disable it for tool-routing — we want fast user-visible output.
-            // Harmless on non-Qwen models (option is ignored).
-            num_predict: -1,
-          },
-          // Tell Qwen3 specifically to skip the thinking phase. Other models
-          // ignore unknown body keys.
-          think: false,
-        },
+      const reply = await this.callEngine(
+        model,
+        messages,
+        tools,
         // Only stream chunks to caller AFTER all tool rounds are done.
         // For tool rounds, we're filling the messages array, not the user-visible text.
         iterations === 1 || messages[messages.length - 1].role === "tool"
@@ -452,9 +442,19 @@ export class OllamaBackend implements LLMBackend {
     return sys;
   }
 
-  /** Make a single /api/chat call, reading streamed frames */
-  private async callOllama(
-    req: OllamaChatRequest,
+  /**
+   * Make a chat request to whichever engine we're configured for.
+   * Speaks Ollama /api/chat or OpenAI /v1/chat/completions depending on
+   * config.engineApi. Both formats can return tool_calls.
+   *
+   * Non-streaming for OpenAI (simpler, llama-server returns one JSON).
+   * Streaming for Ollama (better keep-alive support, only relevant for
+   * the legacy code path).
+   */
+  private async callEngine(
+    model: string,
+    messages: SessionMessage[],
+    tools: unknown[],
     onTextChunk: (chunk: string) => void,
     signal?: AbortSignal,
   ): Promise<{
@@ -466,6 +466,128 @@ export class OllamaBackend implements LLMBackend {
       };
     }>;
   }> {
+    if (this.config.engineApi === "openai") {
+      return this.callOpenAI(model, messages, tools, onTextChunk, signal);
+    }
+    return this.callOllama(model, messages, tools, onTextChunk, signal);
+  }
+
+  /** OpenAI-compatible /v1/chat/completions — works on Ollama, llama-server, vLLM, LM Studio */
+  private async callOpenAI(
+    model: string,
+    messages: SessionMessage[],
+    tools: unknown[],
+    onTextChunk: (chunk: string) => void,
+    signal?: AbortSignal,
+  ): Promise<{
+    content: string;
+    tool_calls?: Array<{
+      function: { name: string; arguments: Record<string, unknown> | string };
+    }>;
+  }> {
+    const body: Record<string, unknown> = {
+      model,
+      messages: messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        ...(m.tool_calls
+          ? {
+              tool_calls: m.tool_calls.map((tc, i) => ({
+                id: tc.id ?? `call_${i}`,
+                type: "function",
+                function: tc.function,
+              })),
+            }
+          : {}),
+        ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
+        ...(m.name ? { name: m.name } : {}),
+      })),
+      stream: false,
+      max_tokens: 1024,
+      temperature: 0.3,
+      // Tell qwen3 to skip thinking. Llama-server's chat-template macro reads
+      // chat_template_kwargs; ignored by other engines. Saves real time on Pi.
+      chat_template_kwargs: { enable_thinking: false },
+    };
+    if (tools && (tools as unknown[]).length > 0) body.tools = tools;
+
+    const res = await fetch(`${this.config.baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!res.ok) {
+      throw new Error(`OpenAI HTTP ${res.status}: ${await res.text()}`);
+    }
+    const data = (await res.json()) as {
+      choices?: Array<{
+        message?: {
+          content?: string;
+          tool_calls?: Array<{
+            id?: string;
+            type?: string;
+            function: {
+              name: string;
+              arguments: string | Record<string, unknown>;
+            };
+          }>;
+        };
+        finish_reason?: string;
+      }>;
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        prompt_tokens_details?: { cached_tokens?: number };
+      };
+    };
+    const msg = data.choices?.[0]?.message;
+    const content = msg?.content ?? "";
+    if (content) onTextChunk(content);
+    log.info(
+      {
+        prompt_tokens: data.usage?.prompt_tokens,
+        completion_tokens: data.usage?.completion_tokens,
+        cached_tokens: data.usage?.prompt_tokens_details?.cached_tokens,
+        finish_reason: data.choices?.[0]?.finish_reason,
+        toolCalls: msg?.tool_calls?.length ?? 0,
+      },
+      "OpenAI-style response",
+    );
+    return {
+      content,
+      tool_calls: msg?.tool_calls?.map((tc) => ({
+        function: tc.function,
+      })),
+    };
+  }
+
+  /** Native Ollama /api/chat with streaming — preserved for engineApi="ollama" */
+  private async callOllama(
+    model: string,
+    messages: SessionMessage[],
+    tools: unknown[],
+    onTextChunk: (chunk: string) => void,
+    signal?: AbortSignal,
+  ): Promise<{
+    content: string;
+    tool_calls?: Array<{
+      function: { name: string; arguments: Record<string, unknown> | string };
+    }>;
+  }> {
+    const req: OllamaChatRequest = {
+      model,
+      messages,
+      tools,
+      stream: true,
+      keep_alive: "30m",
+      options: {
+        num_ctx: this.config.contextTokens,
+        temperature: 0.3,
+        num_predict: -1,
+      },
+      think: false,
+    };
     const res = await fetch(`${this.config.baseUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
