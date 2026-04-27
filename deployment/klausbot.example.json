@@ -1,0 +1,38 @@
+{
+  "backend": "ollama",
+  "backendConfig": {
+    "ollama": {
+      "baseUrl": "http://localhost:8080",
+      "engineApi": "openai",
+      "model": "qwen3-1.7b",
+      "maxToolIterations": 6,
+      "contextTokens": 16000,
+      "codeMode": false
+    }
+  },
+  "model": "qwen3-1.7b",
+  "streaming": {
+    "enabled": false,
+    "throttleMs": 500
+  },
+  "heartbeat": {
+    "enabled": false,
+    "intervalMs": 1800000
+  },
+  "subagents": {
+    "enabled": false
+  },
+  "rumination": {
+    "enabled": false,
+    "intervalMs": 14400000,
+    "maxDigestItems": 7
+  },
+  "rescue": {
+    "enabled": true,
+    "thresholdMs": 120000,
+    "safetyTimeoutMs": 600000,
+    "inactivityTimeoutMs": 600000,
+    "maxConcurrent": 1,
+    "updateIntervalMs": 60000
+  }
+}
