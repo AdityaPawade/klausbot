@@ -8,6 +8,7 @@
 import { execSync } from "child_process";
 import { which } from "../utils/which.js";
 import { isContainer } from "./detect.js";
+import { loadJsonConfig } from "../config/json.js";
 
 /** Capability severity level */
 export type Severity = "required" | "optional";
@@ -52,7 +53,15 @@ export const capabilities: Capability[] = [
   {
     id: "claude",
     name: "Claude Code",
-    severity: "required",
+    // Required only when the active backend is claude-code; optional for other backends
+    severity: (() => {
+      try {
+        const cfg = loadJsonConfig();
+        return cfg.backend === "claude-code" ? "required" : "optional";
+      } catch {
+        return "required";
+      }
+    })(),
     check: () => {
       // Check if claude is in PATH using Node APIs
       if (!which("claude")) return "missing";
@@ -64,7 +73,37 @@ export const capabilities: Capability[] = [
         return "missing";
       }
     },
-    hint: "Install Claude Code: https://claude.ai/code",
+    hint: "Install Claude Code: https://claude.ai/code (or set backend != claude-code in klausbot.json)",
+  },
+  {
+    id: "ollama",
+    name: "Ollama (local LLM)",
+    // Required only when the active backend is ollama
+    severity: (() => {
+      try {
+        const cfg = loadJsonConfig();
+        return cfg.backend === "ollama" ? "required" : "optional";
+      } catch {
+        return "optional";
+      }
+    })(),
+    check: async () => {
+      try {
+        const cfg = loadJsonConfig();
+        if (cfg.backend !== "ollama") return "ok";
+        const url =
+          cfg.backendConfig?.ollama?.baseUrl ?? "http://localhost:11434";
+        const model = cfg.backendConfig?.ollama?.model;
+        const res = await fetch(`${url}/api/tags`, { signal: AbortSignal.timeout(3000) });
+        if (!res.ok) return "missing";
+        const data = (await res.json()) as { models?: Array<{ name: string }> };
+        if (model && !data.models?.find((m) => m.name === model)) return "missing";
+        return "ok";
+      } catch {
+        return "missing";
+      }
+    },
+    hint: "Start Ollama (`ollama serve`) and pull the configured model",
   },
   {
     id: "container-oauth",
