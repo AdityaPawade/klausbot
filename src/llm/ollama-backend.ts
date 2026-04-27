@@ -65,6 +65,8 @@ interface OllamaChatRequest {
   tools?: unknown[];
   stream?: boolean;
   options?: Record<string, unknown>;
+  /** Keep model loaded in memory between requests (avoids cold start) */
+  keep_alive?: string;
 }
 
 /** One frame from Ollama streaming response */
@@ -260,6 +262,13 @@ export class OllamaBackend implements LLMBackend {
           messages,
           tools,
           stream: true,
+          keep_alive: "30m", // keep model loaded between requests
+          options: {
+            // Default Ollama context is 4096 — too small for klausbot's full
+            // system prompt + tool schemas + history. Bump to fit.
+            num_ctx: this.config.contextTokens,
+            temperature: 0.3,
+          },
         },
         // Only stream chunks to caller AFTER all tool rounds are done.
         // For tool rounds, we're filling the messages array, not the user-visible text.
@@ -357,6 +366,19 @@ export class OllamaBackend implements LLMBackend {
     let sys = buildSystemPrompt();
     if (options.additionalInstructions) {
       sys += "\n\n" + options.additionalInstructions;
+    }
+    // Local models choke on huge system prompts. Cap aggressively so the
+    // model has budget left for messages, tool schemas, and its response.
+    // Half the context budget is a reasonable upper bound (in chars).
+    const maxSystemChars = Math.floor(this.config.contextTokens * 4 * 0.5);
+    if (sys.length > maxSystemChars) {
+      log.warn(
+        { originalLen: sys.length, capped: maxSystemChars },
+        "System prompt exceeds half of context budget, truncating for Ollama",
+      );
+      sys =
+        sys.slice(0, maxSystemChars) +
+        "\n\n[system prompt truncated to fit context]";
     }
     return sys;
   }
