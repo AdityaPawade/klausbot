@@ -141,7 +141,7 @@ export class OllamaBackend implements LLMBackend {
       duration_ms: Date.now() - start,
       is_error: result.is_error,
       toolUse: result.toolUse,
-      rescued: result.rescued,
+      rescued: false,
     };
   }
 
@@ -150,16 +150,14 @@ export class OllamaBackend implements LLMBackend {
     options: BackendStreamOptions,
     onChunk: (text: string) => void,
   ): Promise<BackendStreamResult> {
-    const start = Date.now();
     const result = await this.runAgent(prompt, options, onChunk);
     return {
       result: result.result,
       cost_usd: 0,
       session_id: result.session_id,
       toolUse: result.toolUse,
-      rescued: result.rescued,
+      rescued: false,
     };
-    void start; // duration captured inside runAgent if needed
   }
 
   async dispose(): Promise<void> {
@@ -218,39 +216,25 @@ export class OllamaBackend implements LLMBackend {
 
     const toolUseEntries: ToolUseEntry[] = [];
     let accumulated = "";
-    let rescued = false;
     let isError = false;
 
-    // Rescue timer
-    let rescueTimerId: ReturnType<typeof setTimeout> | null = null;
-    let rescueResolved = false;
-    const completionResolvers: Array<(r: BackendResponse) => void> = [];
-
-    const armRescue = () => {
-      if (!options.rescueThresholdMs || !options.onRescue) return;
-      rescueTimerId = setTimeout(() => {
-        if (rescueResolved) return;
-        rescued = true;
-        log.info(
-          { accumulatedLength: accumulated.length, sessionId },
-          "Ollama rescue threshold reached, surfacing partial",
-        );
-        const completion = new Promise<BackendResponse>((res) =>
-          completionResolvers.push(res),
-        );
-        const handle: BackendRescueHandle = {
-          getAccumulated: () => accumulated,
-          completion,
-          sessionId,
-          toolUseSoFar: () => [...toolUseEntries],
-          kill: () => {
-            // No-op — Ollama HTTP requests can't really be force-killed externally
-          },
-        };
-        options.onRescue!(handle);
-      }, options.rescueThresholdMs);
-    };
-    armRescue();
+    // Rescue mechanism is intentionally NOT implemented for the Ollama path.
+    //
+    // The Claude Code rescue model is: "the spawn keeps running in the
+    // background; surface partial text now and follow up later." That works
+    // because the Claude CLI is a long-lived child process that can be
+    // monitored independently.
+    //
+    // Ollama is a single HTTP/2 streaming call. We cannot return partial
+    // and continue — there's no second "channel" for the rest. Surfacing
+    // a partial would require either canceling the stream (losing the
+    // remainder) or echoing it twice.
+    //
+    // Net effect: ollama responses just take as long as they take. The
+    // safetyTimeoutMs from config is still respected via the AbortSignal
+    // wired through callOllama.
+    void options.rescueThresholdMs;
+    void options.onRescue;
 
     // Tool-call loop
     let iterations = 0;
@@ -301,7 +285,7 @@ export class OllamaBackend implements LLMBackend {
         iterations === 1 || messages[messages.length - 1].role === "tool"
           ? (chunk) => {
               accumulated += chunk;
-              if (!rescued) onChunk(chunk);
+              onChunk(chunk);
             }
           : () => {},
         options.signal,
@@ -365,26 +349,12 @@ export class OllamaBackend implements LLMBackend {
       backend: this.id,
     });
 
-    if (rescueTimerId) clearTimeout(rescueTimerId);
-    rescueResolved = true;
-
-    const final: BackendResponse = {
-      result: finalText,
-      cost_usd: 0,
-      session_id: sessionId,
-      duration_ms: 0,
-      is_error: isError,
-      toolUse: toolUseEntries.length > 0 ? toolUseEntries : undefined,
-      rescued,
-    };
-    completionResolvers.forEach((r) => r(final));
-
     return {
       result: finalText,
       session_id: sessionId,
       is_error: isError,
       toolUse: toolUseEntries.length > 0 ? toolUseEntries : undefined,
-      rescued,
+      rescued: false, // Ollama path does not surface partials — see comment above
     };
   }
 
