@@ -46,10 +46,29 @@ export type EnvConfig = z.infer<typeof envSchema>;
  * Loaded from ~/.klausbot/config/klausbot.json
  * Uses strict mode - unknown keys cause validation failure
  *
- * Includes: model, streaming, heartbeat settings
+ * Includes: backend, model, streaming, heartbeat settings
  */
 export const jsonConfigSchema = z
   .object({
+    /** LLM backend to route through ("claude-code" preserves existing behavior) */
+    backend: z.enum(["claude-code", "ollama"]).default("claude-code"),
+    /** Backend-specific configuration */
+    backendConfig: z
+      .object({
+        ollama: z
+          .object({
+            /** Ollama base URL (default: http://localhost:11434) */
+            baseUrl: z.string().default("http://localhost:11434"),
+            /** Ollama model identifier (e.g. "qwen3:4b", "qwen3:8b") */
+            model: z.string(),
+            /** Max iterations of the tool-call loop per query (default: 8) */
+            maxToolIterations: z.number().min(1).max(20).default(8),
+            /** Token budget for context truncation (default: 24000) */
+            contextTokens: z.number().min(2000).max(128000).default(24000),
+          })
+          .optional(),
+      })
+      .optional(),
     /** AI model to use for responses (opus, sonnet, haiku) */
     model: z.string().default("claude-opus-4-6"),
     /** Streaming configuration for real-time responses */

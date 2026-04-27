@@ -10,6 +10,7 @@ import {
   type ToolUseEntry,
   type RescueHandle,
 } from "../daemon/index.js";
+import { dispatchStream } from "../llm/dispatch.js";
 
 const log = createChildLogger("streaming");
 
@@ -518,7 +519,9 @@ export async function streamToTelegram(
   };
 
   try {
-    const result = await streamClaudeResponse(
+    // Routes through the configured LLM backend (claude-code by default,
+    // ollama when backend: "ollama" is set in klausbot.json).
+    const result = await dispatchStream(
       prompt,
       {
         model: options?.model,

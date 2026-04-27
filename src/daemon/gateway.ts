@@ -7,7 +7,6 @@ import {
 } from "../telegram/index.js";
 import {
   MessageQueue,
-  queryClaudeCode,
   ensureDataDir,
   spawnBackgroundAgent,
   recordSession,
@@ -20,6 +19,7 @@ import {
   type RescueMonitorCallbacks,
 } from "./rescue-monitor.js";
 import type { RescueHandle } from "./spawner.js";
+import { dispatchQuery } from "../llm/dispatch.js";
 import { getJsonConfig } from "../config/index.js";
 import type { QueuedMessage, ThreadingContext } from "./queue.js";
 import {
@@ -1545,7 +1545,7 @@ async function retryWithToolContext(
       `But you forgot to reply with text. The user said: "${originalPrompt}"\n\n` +
       `Now respond naturally in 1-2 sentences acknowledging what you did. Be casual and warm.`;
 
-    const retry = await queryClaudeCode(nudge, {
+    const retry = await dispatchQuery(nudge, {
       model,
       timeout: 15000,
     });
@@ -1932,7 +1932,7 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
 
     let rescueHandle: RescueHandle | null = null;
 
-    const response = await queryClaudeCode(effectiveText, {
+    const response = await dispatchQuery(effectiveText, {
       additionalInstructions,
       resumeSessionId,
       model: jsonConfig.model,
@@ -1943,8 +1943,8 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
         : undefined,
       rescueThresholdMs: useRescue ? rescueConfig.thresholdMs : undefined,
       onRescue: useRescue
-        ? (handle: RescueHandle) => {
-            rescueHandle = handle;
+        ? (handle) => {
+            rescueHandle = handle as RescueHandle;
           }
         : undefined,
     });
