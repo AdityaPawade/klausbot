@@ -67,6 +67,8 @@ interface OllamaChatRequest {
   options?: Record<string, unknown>;
   /** Keep model loaded in memory between requests (avoids cold start) */
   keep_alive?: string;
+  /** Qwen3-specific: skip the chain-of-thought / "thinking" phase */
+  think?: boolean;
 }
 
 /** One frame from Ollama streaming response */
@@ -268,7 +270,15 @@ export class OllamaBackend implements LLMBackend {
             // system prompt + tool schemas + history. Bump to fit.
             num_ctx: this.config.contextTokens,
             temperature: 0.3,
+            // Qwen3 emits a multi-paragraph "thinking" block before its real
+            // answer. On a Pi 5 CPU each thinking token is ~200ms, so we
+            // disable it for tool-routing — we want fast user-visible output.
+            // Harmless on non-Qwen models (option is ignored).
+            num_predict: -1,
           },
+          // Tell Qwen3 specifically to skip the thinking phase. Other models
+          // ignore unknown body keys.
+          think: false,
         },
         // Only stream chunks to caller AFTER all tool rounds are done.
         // For tool rounds, we're filling the messages array, not the user-visible text.
