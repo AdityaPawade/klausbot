@@ -43,7 +43,10 @@ const DEFAULT_TIMEOUT = 300_000; // 5 min — codex with reasoning can be slower
 const DEFAULT_BINARY = "codex";
 
 /** Allowed sandbox modes for `codex exec --sandbox`. */
-export type CodexSandbox = "read-only" | "workspace-write" | "danger-full-access";
+export type CodexSandbox =
+  | "read-only"
+  | "workspace-write"
+  | "danger-full-access";
 
 /** Allowed reasoning effort levels for codex. */
 export type CodexReasoningEffort = "low" | "medium" | "high";
@@ -282,13 +285,16 @@ async function runCodex(
   const timeout = options.timeout ?? DEFAULT_TIMEOUT;
   const isResume = !!options.resumeSessionId;
 
-  const wrappedPrompt = buildCodexPrompt(prompt, options.additionalInstructions);
+  const wrappedPrompt = buildCodexPrompt(
+    prompt,
+    options.additionalInstructions,
+  );
   const args = buildCodexArgs(cfg, options, wrappedPrompt);
 
   log.info(
     {
       isResume,
-      model: options.model || cfg.model || "(codex default)",
+      model: cfg.model || "(codex default)",
       sandbox: cfg.sandbox,
       cwd: cfg.cwd,
       promptBytes: Buffer.byteLength(prompt, "utf-8"),
@@ -341,8 +347,7 @@ async function runCodex(
           session_id: sessionId,
           duration_ms,
           is_error: false,
-          toolUse:
-            toolUseEntries.length > 0 ? [...toolUseEntries] : undefined,
+          toolUse: toolUseEntries.length > 0 ? [...toolUseEntries] : undefined,
           rescued: true,
         };
         const handle: BackendRescueHandle = {
@@ -423,8 +428,7 @@ async function runCodex(
           if (item.type === "agent_message" && item.text) {
             // Multiple agent_messages can appear across tool turns — concat
             // with newlines so the user sees the full transcript.
-            const chunk =
-              accumulated.length > 0 ? "\n" + item.text : item.text;
+            const chunk = accumulated.length > 0 ? "\n" + item.text : item.text;
             accumulated += chunk;
             if (onChunk) onChunk(chunk);
           } else if (
@@ -468,8 +472,7 @@ async function runCodex(
         cost_usd: 0,
         session_id: sessionId,
         duration_ms,
-        is_error:
-          isError || (code !== 0 && !rescued && !timedOut),
+        is_error: isError || (code !== 0 && !rescued && !timedOut),
         toolUse: toolUseEntries.length > 0 ? toolUseEntries : undefined,
       };
 
@@ -488,10 +491,7 @@ async function runCodex(
 
       if (timedOut) {
         const timeoutSec = Math.round(timeout / 1000);
-        log.error(
-          { timeout, duration_ms },
-          "Codex timed out, no recovery",
-        );
+        log.error({ timeout, duration_ms }, "Codex timed out, no recovery");
         reject(
           new Error(
             `Codex response timed out after ${timeoutSec}s — if a background task was started, you'll still be notified when it completes`,
@@ -502,14 +502,9 @@ async function runCodex(
 
       if (code !== 0) {
         const stderrTrunc =
-          stderrBuf.length > 200
-            ? `${stderrBuf.slice(0, 200)}...`
-            : stderrBuf;
+          stderrBuf.length > 200 ? `${stderrBuf.slice(0, 200)}...` : stderrBuf;
         const error = `Codex exited with code ${code}: ${stderrTrunc || "(no stderr)"}`;
-        log.error(
-          { code, stderr: stderrTrunc, duration_ms },
-          error,
-        );
+        log.error({ code, stderr: stderrTrunc, duration_ms }, error);
         reject(new Error(error));
         return;
       }

@@ -51,9 +51,7 @@ export type EnvConfig = z.infer<typeof envSchema>;
 export const jsonConfigSchema = z
   .object({
     /** LLM backend to route through ("claude-code" preserves existing behavior) */
-    backend: z
-      .enum(["claude-code", "ollama", "codex"])
-      .default("claude-code"),
+    backend: z.enum(["claude-code", "ollama", "codex"]).default("claude-code"),
     /** Backend-specific configuration */
     backendConfig: z
       .object({
@@ -100,9 +98,7 @@ export const jsonConfigSchema = z
             /** Working directory for the agent (default: KLAUSBOT_HOME at runtime) */
             cwd: z.string().optional(),
             /** Reasoning effort override (low / medium / high). Optional. */
-            reasoningEffort: z
-              .enum(["low", "medium", "high"])
-              .optional(),
+            reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
             /** Pass --skip-git-repo-check (KLAUSBOT_HOME isn't a git repo) */
             skipGitRepoCheck: z.boolean().default(true),
           })

@@ -74,7 +74,11 @@ function makeFakeProc() {
   };
   proc.stdout = stdout;
   proc.stderr = stderr;
-  proc.stdin = new Writable({ write(_c, _e, cb) { cb(); } });
+  proc.stdin = new Writable({
+    write(_c, _e, cb) {
+      cb();
+    },
+  });
   proc.killed = false;
   proc.kill = vi.fn((_signal?: string) => {
     proc.killed = true;
@@ -84,8 +88,7 @@ function makeFakeProc() {
     proc,
     /** Write a single JSONL line (newline appended automatically). */
     emitLine: (json: object | string) => {
-      const text =
-        typeof json === "string" ? json : JSON.stringify(json);
+      const text = typeof json === "string" ? json : JSON.stringify(json);
       const line = text + "\n";
       // Use the most recently captured controller (post-flow), otherwise queue.
       if (stdoutController) {
@@ -167,11 +170,7 @@ describe("buildCodexArgs", () => {
   });
 
   it("uses cfg.model when set", () => {
-    const args = buildCodexArgs(
-      { ...baseCfg, model: "gpt-5-codex" },
-      {},
-      "P",
-    );
+    const args = buildCodexArgs({ ...baseCfg, model: "gpt-5-codex" }, {}, "P");
     const idx = args.indexOf("-m");
     expect(idx).toBeGreaterThan(-1);
     expect(args[idx + 1]).toBe("gpt-5-codex");
@@ -180,11 +179,7 @@ describe("buildCodexArgs", () => {
   it("ignores options.model since the top-level klausbot 'model' field is Claude-Code-specific", () => {
     // options.model could be e.g. "claude-opus-4-6" — must NOT be passed to codex
     // (codex would reject "The 'claude-opus-4-6' model is not supported").
-    const args = buildCodexArgs(
-      baseCfg,
-      { model: "claude-opus-4-6" },
-      "P",
-    );
+    const args = buildCodexArgs(baseCfg, { model: "claude-opus-4-6" }, "P");
     expect(args).not.toContain("-m");
   });
 
@@ -197,7 +192,7 @@ describe("buildCodexArgs", () => {
     expect(args[args.indexOf("-m") + 1]).toBe("o3");
   });
 
-  it("emits -c model_reasoning_effort=\"...\" when reasoningEffort is set", () => {
+  it('emits -c model_reasoning_effort="..." when reasoningEffort is set', () => {
     const args = buildCodexArgs(
       { ...baseCfg, reasoningEffort: "high" },
       {},
@@ -403,10 +398,8 @@ describe("CodexBackend.stream (via mocked spawn)", () => {
 
     const backend = new CodexBackend();
     const chunks: string[] = [];
-    const promise = backend.stream(
-      "stream me",
-      {},
-      (text) => chunks.push(text),
+    const promise = backend.stream("stream me", {}, (text) =>
+      chunks.push(text),
     );
 
     setImmediate(() => {
