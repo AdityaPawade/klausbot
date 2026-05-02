@@ -51,7 +51,9 @@ export type EnvConfig = z.infer<typeof envSchema>;
 export const jsonConfigSchema = z
   .object({
     /** LLM backend to route through ("claude-code" preserves existing behavior) */
-    backend: z.enum(["claude-code", "ollama"]).default("claude-code"),
+    backend: z
+      .enum(["claude-code", "ollama", "codex"])
+      .default("claude-code"),
     /** Backend-specific configuration */
     backendConfig: z
       .object({
@@ -77,6 +79,32 @@ export const jsonConfigSchema = z
              * keep_alive/num_ctx/think extensions. Default: "openai".
              */
             engineApi: z.enum(["ollama", "openai"]).default("openai"),
+          })
+          .optional(),
+        codex: z
+          .object({
+            /** Path or name of the codex binary (default: "codex" — PATH lookup) */
+            binary: z.string().default("codex"),
+            /** Default model id (e.g. "gpt-5-codex"). Empty = codex default */
+            model: z.string().optional(),
+            /**
+             * Sandbox policy. Default: "danger-full-access".
+             * Codex auto-approves MCP tool calls only under danger-full-access
+             * in non-interactive `codex exec`; read-only / workspace-write
+             * cancel the calls without a human approver. Mirrors klausbot's
+             * Claude Code path (--dangerously-skip-permissions).
+             */
+            sandbox: z
+              .enum(["read-only", "workspace-write", "danger-full-access"])
+              .default("danger-full-access"),
+            /** Working directory for the agent (default: KLAUSBOT_HOME at runtime) */
+            cwd: z.string().optional(),
+            /** Reasoning effort override (low / medium / high). Optional. */
+            reasoningEffort: z
+              .enum(["low", "medium", "high"])
+              .optional(),
+            /** Pass --skip-git-repo-check (KLAUSBOT_HOME isn't a git repo) */
+            skipGitRepoCheck: z.boolean().default(true),
           })
           .optional(),
       })

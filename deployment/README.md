@@ -12,6 +12,7 @@ Telegram <-> klausbot daemon <-> llama-server (HTTP) <-> qwen3:1.7b GGUF
 ```
 
 Two systemd user services:
+
 - `llama-server.service` - llama.cpp serving qwen3:1.7b at :8080
 - `klausbot.service` - depends on llama-server, talks to it via OpenAI API
 
@@ -57,6 +58,7 @@ systemctl --user restart klausbot.service
 ## Switching models
 
 To upgrade to qwen3:4b for better quality (slower):
+
 1. Download Qwen3-4B-Q4_K_M.gguf
 2. Edit `~/.config/systemd/user/llama-server.service` --model path
 3. `systemctl --user restart llama-server klausbot`
@@ -64,14 +66,23 @@ To upgrade to qwen3:4b for better quality (slower):
 ## Switching backends
 
 To revert to Claude Code (or switch to Ollama-native):
+
 ```json
 { "backend": "claude-code" }
 ```
+
 or
+
 ```json
 {
   "backend": "ollama",
-  "backendConfig": { "ollama": { "baseUrl": "http://localhost:11434", "engineApi": "ollama", "model": "qwen3:4b" } }
+  "backendConfig": {
+    "ollama": {
+      "baseUrl": "http://localhost:11434",
+      "engineApi": "ollama",
+      "model": "qwen3:4b"
+    }
+  }
 }
 ```
 

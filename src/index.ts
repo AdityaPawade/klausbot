@@ -18,8 +18,8 @@ import { theme } from "./cli/theme.js";
 // Load .env from both locations (later loads don't override existing)
 // 1. Current directory (for development)
 // 2. ~/.klausbot/.env (for production)
-dotenv.config();
-dotenv.config({ path: join(homedir(), ".klausbot", ".env") });
+dotenv.config({ quiet: true });
+dotenv.config({ path: join(homedir(), ".klausbot", ".env"), quiet: true });
 
 /**
  * Get package version from package.json

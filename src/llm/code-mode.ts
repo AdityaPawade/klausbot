@@ -73,7 +73,10 @@ export function buildCodeModeApiDoc(mcpTools: OllamaTool[]): string {
     const name = t.function.name;
     const desc = t.function.description || "";
     const params = t.function.parameters as
-      | { properties?: Record<string, { type?: string; description?: string }>; required?: string[] }
+      | {
+          properties?: Record<string, { type?: string; description?: string }>;
+          required?: string[];
+        }
       | undefined;
     const props = params?.properties ?? {};
     const required = new Set(params?.required ?? []);
@@ -85,7 +88,9 @@ export function buildCodeModeApiDoc(mcpTools: OllamaTool[]): string {
     }
     const argsSig = argParts.length > 0 ? `{ ${argParts.join("; ")} }` : "";
     lines.push(`  /** ${desc} */`);
-    lines.push(`  ${name}(args${argsSig ? ": " + argsSig : "?: never"}): Promise<string>;`);
+    lines.push(
+      `  ${name}(args${argsSig ? ": " + argsSig : "?: never"}): Promise<string>;`,
+    );
   }
 
   lines.push("};");
@@ -93,7 +98,7 @@ export function buildCodeModeApiDoc(mcpTools: OllamaTool[]): string {
   lines.push("");
   lines.push("Example:");
   lines.push("```js");
-  lines.push("// User: \"set a 9am cron to drink water\"");
+  lines.push('// User: "set a 9am cron to drink water"');
   lines.push("await tools.create_cron({");
   lines.push("  name: 'water-reminder',");
   lines.push("  schedule: '0 9 * * *',");
@@ -103,10 +108,16 @@ export function buildCodeModeApiDoc(mcpTools: OllamaTool[]): string {
   lines.push("```");
   lines.push("");
   lines.push("Rules:");
-  lines.push("- Use `executeJs` whenever a tool would help; don't invent JSON tool-calls.");
+  lines.push(
+    "- Use `executeJs` whenever a tool would help; don't invent JSON tool-calls.",
+  );
   lines.push("- Use top-level await; the runtime supports it.");
-  lines.push("- Last expression value is returned to you; you can also console.log().");
-  lines.push("- Failures throw — no need for try/catch unless you want to recover.");
+  lines.push(
+    "- Last expression value is returned to you; you can also console.log().",
+  );
+  lines.push(
+    "- Failures throw — no need for try/catch unless you want to recover.",
+  );
 
   return lines.join("\n");
 }
@@ -156,7 +167,10 @@ export async function executeJsSandboxed(
 
   // Build the `tools` object — each tool name maps to a function that
   // calls the bridge.
-  const tools: Record<string, (args: Record<string, unknown>) => Promise<string>> = {};
+  const tools: Record<
+    string,
+    (args: Record<string, unknown>) => Promise<string>
+  > = {};
   for (const t of availableTools) {
     const name = t.function.name;
     tools[name] = async (args = {}) => bridge.callTool(name, args);
@@ -198,7 +212,8 @@ export async function executeJsSandboxed(
     returnValue = await promise;
   } catch (err) {
     threw = true;
-    const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    const msg =
+      err instanceof Error ? `${err.name}: ${err.message}` : String(err);
     stderr.push(msg);
     log.warn({ err, codePreview: code.slice(0, 200) }, "executeJs threw");
   }

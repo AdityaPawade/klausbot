@@ -227,7 +227,10 @@ export class OllamaBackend implements LLMBackend {
         messages = [
           { role: "system", content: this.buildSystemPromptText(options) },
         ];
-        log.info({ sessionId }, "Resume requested but no prior session, starting fresh under that id");
+        log.info(
+          { sessionId },
+          "Resume requested but no prior session, starting fresh under that id",
+        );
       }
     } else {
       sessionId = newSessionId();
@@ -636,7 +639,10 @@ export class OllamaBackend implements LLMBackend {
             aggregated += chunk;
             onTextChunk(chunk);
           }
-          if (frame.message?.tool_calls && frame.message.tool_calls.length > 0) {
+          if (
+            frame.message?.tool_calls &&
+            frame.message.tool_calls.length > 0
+          ) {
             toolCalls = frame.message.tool_calls;
             log.info(
               { tools: frame.message.tool_calls.map((c) => c.function.name) },
@@ -660,7 +666,10 @@ export class OllamaBackend implements LLMBackend {
             return { content: aggregated, tool_calls: toolCalls };
           }
         } catch (err) {
-          log.warn({ err, line: line.slice(0, 200) }, "Failed to parse Ollama stream line");
+          log.warn(
+            { err, line: line.slice(0, 200) },
+            "Failed to parse Ollama stream line",
+          );
         }
       }
     }

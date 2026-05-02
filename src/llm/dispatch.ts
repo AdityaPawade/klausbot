@@ -58,6 +58,19 @@ async function resolveBackend(): Promise<LLMBackend> {
       });
       break;
     }
+    case "codex": {
+      const codexCfg = config.backendConfig?.codex;
+      const { CodexBackend } = await import("./codex-backend.js");
+      backend = new CodexBackend({
+        binary: codexCfg?.binary,
+        model: codexCfg?.model,
+        sandbox: codexCfg?.sandbox,
+        cwd: codexCfg?.cwd,
+        reasoningEffort: codexCfg?.reasoningEffort,
+        skipGitRepoCheck: codexCfg?.skipGitRepoCheck,
+      });
+      break;
+    }
     default:
       throw new Error(`Unknown backend: ${id}`);
   }

@@ -54,28 +54,42 @@ function buildCodeModeApiDoc(tools) {
     "declare const tools: {",
   ];
   for (const t of tools) {
-    const props = (t.function.parameters?.properties) ?? {};
+    const props = t.function.parameters?.properties ?? {};
     const required = new Set(t.function.parameters?.required ?? []);
     const args = Object.entries(props)
       .map(([k, s]) => `${k}${required.has(k) ? "" : "?"}: ${jsToType(s.type)}`)
       .join("; ");
     lines.push(`  /** ${t.function.description ?? ""} */`);
-    lines.push(`  ${t.function.name}(args${args ? `: { ${args} }` : "?: never"}): Promise<string>;`);
+    lines.push(
+      `  ${t.function.name}(args${args ? `: { ${args} }` : "?: never"}): Promise<string>;`,
+    );
   }
   lines.push("};");
   lines.push("```");
-  lines.push("Rules: only call executeJs (no other tools). Use top-level await.");
+  lines.push(
+    "Rules: only call executeJs (no other tools). Use top-level await.",
+  );
   return lines.join("\n");
 }
 function jsToType(t) {
-  return { string: "string", number: "number", integer: "number", boolean: "boolean", array: "unknown[]", object: "Record<string,unknown>" }[t] || "unknown";
+  return (
+    {
+      string: "string",
+      number: "number",
+      integer: "number",
+      boolean: "boolean",
+      array: "unknown[]",
+      object: "Record<string,unknown>",
+    }[t] || "unknown"
+  );
 }
 
 const CODE_MODE_TOOL = {
   type: "function",
   function: {
     name: "executeJs",
-    description: "Execute JS that uses tools.<name>(args). Use this for ALL actions.",
+    description:
+      "Execute JS that uses tools.<name>(args). Use this for ALL actions.",
     parameters: {
       type: "object",
       properties: { code: { type: "string", description: "JS source." } },
@@ -90,17 +104,20 @@ const TASKS = [
     id: "chat-hi",
     prompt: "Say hi in five words.",
     expect: { tool: null }, // no tool call
-    score: (out, calls) => (calls.length === 0 && out.length > 0 && out.length < 80 ? 1 : 0),
+    score: (out, calls) =>
+      calls.length === 0 && out.length > 0 && out.length < 80 ? 1 : 0,
   },
   {
     id: "time-what",
-    prompt: "What's a quick way to remember the current date in one short sentence?",
+    prompt:
+      "What's a quick way to remember the current date in one short sentence?",
     expect: { tool: null },
     score: (out, calls) => (calls.length === 0 && out.length > 10 ? 1 : 0),
   },
   {
     id: "schedule-cron",
-    prompt: "Set up a cron that pings me at 9am every weekday with the instruction 'check overnight emails'. Use chat_id 1097409126.",
+    prompt:
+      "Set up a cron that pings me at 9am every weekday with the instruction 'check overnight emails'. Use chat_id 1097409126.",
     expect: { tool: "create_cron" },
     score: (out, calls) => {
       const c = calls.find((c) => c.name === "create_cron");
@@ -108,8 +125,13 @@ const TASKS = [
       const args = c.args || {};
       // schedule must look like cron, instruction must mention emails
       return (
-        (typeof args.schedule === "string" && /\d/.test(args.schedule) ? 1 : 0) *
-        (typeof args.instruction === "string" && args.instruction.toLowerCase().includes("email") ? 1 : 0.5)
+        (typeof args.schedule === "string" && /\d/.test(args.schedule)
+          ? 1
+          : 0) *
+        (typeof args.instruction === "string" &&
+        args.instruction.toLowerCase().includes("email")
+          ? 1
+          : 0.5)
       );
     },
   },
@@ -123,18 +145,27 @@ const TASKS = [
     id: "memory-recall",
     prompt: "What do you remember about my FPGA work?",
     expect: { tool: "search_memories" },
-    score: (out, calls) => (calls.find((c) => c.name === "search_memories") ? 1 : 0),
+    score: (out, calls) =>
+      calls.find((c) => c.name === "search_memories") ? 1 : 0,
   },
   {
     id: "reasoning-leap-year",
-    prompt: "If today is 27 April 2026, what's the next leap year? Reply with just the year.",
+    prompt:
+      "If today is 27 April 2026, what's the next leap year? Reply with just the year.",
     expect: { tool: null },
     score: (out) => (/2028/.test(out) ? 1 : 0),
   },
 ];
 
 // ---------- Engine adapters ----------
-async function callOllama({ baseUrl, model, system, messages, tools, codeMode }) {
+async function callOllama({
+  baseUrl,
+  model,
+  system,
+  messages,
+  tools,
+  codeMode,
+}) {
   const sysFinal = codeMode
     ? system + "\n\n" + buildCodeModeApiDoc(mcpTools)
     : system;
@@ -157,7 +188,11 @@ async function callOllama({ baseUrl, model, system, messages, tools, codeMode })
   });
   const totalMs = Date.now() - t0;
   if (!res.ok) {
-    return { ok: false, error: `HTTP ${res.status}: ${(await res.text()).slice(0,200)}`, totalMs };
+    return {
+      ok: false,
+      error: `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      totalMs,
+    };
   }
   const data = await res.json();
   return {
@@ -197,8 +232,8 @@ async function runTask(task, cfg) {
       if (tc.function.name === "executeJs") {
         const code =
           typeof tc.function.arguments === "string"
-            ? safeParse(tc.function.arguments)?.code ?? ""
-            : tc.function.arguments?.code ?? "";
+            ? (safeParse(tc.function.arguments)?.code ?? "")
+            : (tc.function.arguments?.code ?? "");
         const innerCalls = parseInnerToolCalls(code);
         calls.push(...innerCalls);
       } else {
@@ -235,7 +270,11 @@ async function runTask(task, cfg) {
 }
 
 function safeParse(s) {
-  try { return JSON.parse(s); } catch { return null; }
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
 }
 function stripThink(s) {
   if (!s) return s;
@@ -266,22 +305,76 @@ function parseInnerToolCalls(code) {
 }
 
 // ---------- Configs to test ----------
-const SYSTEM = "You are klausbot, a Telegram personal assistant for Aditya. Reply concisely. When the user asks for an action a tool can do, call the appropriate tool with valid arguments. When the user just chats, reply naturally without calling tools.";
+const SYSTEM =
+  "You are klausbot, a Telegram personal assistant for Aditya. Reply concisely. When the user asks for an action a tool can do, call the appropriate tool with valid arguments. When the user just chats, reply naturally without calling tools.";
 
 const ALL_CONFIGS = {
-  "ollama-qwen3-4b-native": { baseUrl: OLLAMA, model: "qwen3:4b", system: SYSTEM, codeMode: false },
-  "ollama-qwen3-4b-code": { baseUrl: OLLAMA, model: "qwen3:4b", system: SYSTEM, codeMode: true },
-  "ollama-qwen3-1.7b-native": { baseUrl: OLLAMA, model: "qwen3:1.7b", system: SYSTEM, codeMode: false },
-  "ollama-qwen3-1.7b-code": { baseUrl: OLLAMA, model: "qwen3:1.7b", system: SYSTEM, codeMode: true },
-  "ollama-llama3.2-3b-native": { baseUrl: OLLAMA, model: "llama3.2:3b", system: SYSTEM, codeMode: false },
-  "ollama-llama3.2-3b-code": { baseUrl: OLLAMA, model: "llama3.2:3b", system: SYSTEM, codeMode: true },
-  "ollama-phi4-mini-native": { baseUrl: OLLAMA, model: "phi4-mini:3.8b", system: SYSTEM, codeMode: false },
-  "ollama-qwen3-0.6b-native": { baseUrl: OLLAMA, model: "qwen3:0.6b", system: SYSTEM, codeMode: false },
-  "llamacpp-qwen3-4b-native": { baseUrl: LLAMACPP, model: "auto", system: SYSTEM, codeMode: false },
-  "llamacpp-qwen3-4b-code": { baseUrl: LLAMACPP, model: "auto", system: SYSTEM, codeMode: true },
+  "ollama-qwen3-4b-native": {
+    baseUrl: OLLAMA,
+    model: "qwen3:4b",
+    system: SYSTEM,
+    codeMode: false,
+  },
+  "ollama-qwen3-4b-code": {
+    baseUrl: OLLAMA,
+    model: "qwen3:4b",
+    system: SYSTEM,
+    codeMode: true,
+  },
+  "ollama-qwen3-1.7b-native": {
+    baseUrl: OLLAMA,
+    model: "qwen3:1.7b",
+    system: SYSTEM,
+    codeMode: false,
+  },
+  "ollama-qwen3-1.7b-code": {
+    baseUrl: OLLAMA,
+    model: "qwen3:1.7b",
+    system: SYSTEM,
+    codeMode: true,
+  },
+  "ollama-llama3.2-3b-native": {
+    baseUrl: OLLAMA,
+    model: "llama3.2:3b",
+    system: SYSTEM,
+    codeMode: false,
+  },
+  "ollama-llama3.2-3b-code": {
+    baseUrl: OLLAMA,
+    model: "llama3.2:3b",
+    system: SYSTEM,
+    codeMode: true,
+  },
+  "ollama-phi4-mini-native": {
+    baseUrl: OLLAMA,
+    model: "phi4-mini:3.8b",
+    system: SYSTEM,
+    codeMode: false,
+  },
+  "ollama-qwen3-0.6b-native": {
+    baseUrl: OLLAMA,
+    model: "qwen3:0.6b",
+    system: SYSTEM,
+    codeMode: false,
+  },
+  "llamacpp-qwen3-4b-native": {
+    baseUrl: LLAMACPP,
+    model: "auto",
+    system: SYSTEM,
+    codeMode: false,
+  },
+  "llamacpp-qwen3-4b-code": {
+    baseUrl: LLAMACPP,
+    model: "auto",
+    system: SYSTEM,
+    codeMode: true,
+  },
 };
 
-const SUITE = (process.env.SUITE || "ollama-qwen3-4b-native,ollama-qwen3-4b-code,ollama-qwen3-1.7b-native,ollama-llama3.2-3b-native")
+const SUITE = (
+  process.env.SUITE ||
+  "ollama-qwen3-4b-native,ollama-qwen3-4b-code,ollama-qwen3-1.7b-native,ollama-llama3.2-3b-native"
+)
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -308,7 +401,7 @@ async function main() {
           results[cfgName].totalScore += r.score;
           results[cfgName].totalMs += r.totalMs;
           console.log(
-            `score=${r.score.toFixed(2)} t=${r.totalMs}ms tools=${r.calls.length} text="${(r.text||"").slice(0,60).replace(/\n/g," ")}"`,
+            `score=${r.score.toFixed(2)} t=${r.totalMs}ms tools=${r.calls.length} text="${(r.text || "").slice(0, 60).replace(/\n/g, " ")}"`,
           );
         } else {
           results[cfgName].fail += 1;
@@ -324,7 +417,11 @@ async function main() {
   // Summary
   console.log("\n\n=== SUMMARY ===");
   console.log(
-    "Config".padEnd(32) + "Score".padStart(8) + "TotMs".padStart(10) + "Avg/task".padStart(12) + "Fails".padStart(7),
+    "Config".padEnd(32) +
+      "Score".padStart(8) +
+      "TotMs".padStart(10) +
+      "Avg/task".padStart(12) +
+      "Fails".padStart(7),
   );
   const ranked = Object.entries(results).map(([name, r]) => ({
     name,
@@ -337,16 +434,19 @@ async function main() {
   for (const r of ranked) {
     console.log(
       r.name.padEnd(32) +
-      r.score.toFixed(2).padStart(8) +
-      String(r.totalMs).padStart(10) +
-      String(r.avg).padStart(12) +
-      String(r.fail).padStart(7),
+        r.score.toFixed(2).padStart(8) +
+        String(r.totalMs).padStart(10) +
+        String(r.avg).padStart(12) +
+        String(r.fail).padStart(7),
     );
   }
 
   // Write JSON for analysis
   const fs = await import("fs");
-  fs.writeFileSync("/tmp/benchmark-results.json", JSON.stringify(results, null, 2));
+  fs.writeFileSync(
+    "/tmp/benchmark-results.json",
+    JSON.stringify(results, null, 2),
+  );
   console.log("\nFull results: /tmp/benchmark-results.json");
 
   await mcpClient.close();

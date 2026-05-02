@@ -7,6 +7,7 @@
 
 import { ClaudeCodeBackend } from "./claude-code-backend.js";
 import { OllamaBackend } from "./ollama-backend.js";
+import { CodexBackend } from "./codex-backend.js";
 import type { LLMBackend } from "./types.js";
 import type { JsonConfig } from "../config/schema.js";
 import { createChildLogger } from "../utils/logger.js";
@@ -53,6 +54,18 @@ export function getBackend(config: JsonConfig): LLMBackend {
       });
       break;
     }
+    case "codex": {
+      const codexCfg = config.backendConfig?.codex;
+      backend = new CodexBackend({
+        binary: codexCfg?.binary,
+        model: codexCfg?.model,
+        sandbox: codexCfg?.sandbox,
+        cwd: codexCfg?.cwd,
+        reasoningEffort: codexCfg?.reasoningEffort,
+        skipGitRepoCheck: codexCfg?.skipGitRepoCheck,
+      });
+      break;
+    }
     default:
       throw new Error(`Unknown backend: ${id}`);
   }
@@ -73,6 +86,7 @@ export function resetBackend(): void {
 
 export { ClaudeCodeBackend } from "./claude-code-backend.js";
 export { OllamaBackend } from "./ollama-backend.js";
+export { CodexBackend } from "./codex-backend.js";
 export { McpBridge } from "./mcp-bridge.js";
 export type {
   LLMBackend,

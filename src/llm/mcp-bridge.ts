@@ -63,15 +63,17 @@ export class McpBridge {
       function: {
         name: t.name,
         description: t.description ?? "",
-        parameters:
-          (t.inputSchema as Record<string, unknown>) ?? {
-            type: "object",
-            properties: {},
-          },
+        parameters: (t.inputSchema as Record<string, unknown>) ?? {
+          type: "object",
+          properties: {},
+        },
       },
     }));
 
-    log.info({ count: tools.length, names: tools.map((x) => x.function.name) }, "Discovered MCP tools");
+    log.info(
+      { count: tools.length, names: tools.map((x) => x.function.name) },
+      "Discovered MCP tools",
+    );
     this.cachedTools = tools;
     return tools;
   }
@@ -84,7 +86,9 @@ export class McpBridge {
     try {
       const result = await this.client.callTool({ name, arguments: args });
       // result.content is an array of content blocks — concatenate text blocks
-      const content = result.content as Array<{ type: string; text?: string }> | undefined;
+      const content = result.content as
+        | Array<{ type: string; text?: string }>
+        | undefined;
       if (!content) return "";
       return content
         .filter((b) => b.type === "text" && typeof b.text === "string")

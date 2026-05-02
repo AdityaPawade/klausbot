@@ -6,6 +6,8 @@
  */
 
 import { execSync } from "child_process";
+import { existsSync } from "fs";
+import { isAbsolute } from "path";
 import { which } from "../utils/which.js";
 import { isContainer } from "./detect.js";
 import { loadJsonConfig } from "../config/json.js";
@@ -109,6 +111,47 @@ export const capabilities: Capability[] = [
       }
     },
     hint: "Start the configured engine (`ollama serve` or `llama-server -m model.gguf`) and ensure it is reachable at the configured baseUrl",
+  },
+  {
+    id: "codex",
+    name: "Codex CLI (logged in)",
+    // Required only when the active backend is codex
+    severity: (() => {
+      try {
+        const cfg = loadJsonConfig();
+        return cfg.backend === "codex" ? "required" : "optional";
+      } catch {
+        return "optional";
+      }
+    })(),
+    check: () => {
+      let cfg;
+      try {
+        cfg = loadJsonConfig();
+      } catch {
+        return "missing";
+      }
+      if (cfg.backend !== "codex") return "ok";
+      const binary = cfg.backendConfig?.codex?.binary ?? "codex";
+      // Resolve binary: absolute path → existsSync; otherwise → which()
+      const resolved = isAbsolute(binary)
+        ? existsSync(binary)
+          ? binary
+          : null
+        : which(binary);
+      if (!resolved) return "missing";
+      try {
+        // codex login status writes to stderr, so merge streams
+        const out = execSync(`"${resolved}" login status 2>&1`, {
+          stdio: "pipe",
+          timeout: 5000,
+        }).toString();
+        return /Logged in/i.test(out) ? "ok" : "missing";
+      } catch {
+        return "missing";
+      }
+    },
+    hint: "Install codex (https://github.com/openai/codex/releases) and run `codex login --device-auth` (or set backend != codex in klausbot.json)",
   },
   {
     id: "container-oauth",

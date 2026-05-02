@@ -59,15 +59,16 @@ export function loadSession(sessionId: string): SessionMessage[] | null {
   ensureSchema();
   const db = getDb();
   const row = db
-    .prepare(
-      "SELECT messages_json FROM llm_sessions WHERE session_id = ?",
-    )
+    .prepare("SELECT messages_json FROM llm_sessions WHERE session_id = ?")
     .get(sessionId) as { messages_json: string } | undefined;
   if (!row) return null;
   try {
     return JSON.parse(row.messages_json) as SessionMessage[];
   } catch (err) {
-    log.warn({ err, sessionId }, "Failed to parse session messages, treating as fresh");
+    log.warn(
+      { err, sessionId },
+      "Failed to parse session messages, treating as fresh",
+    );
     return null;
   }
 }
@@ -90,7 +91,14 @@ export function saveSession(
     `INSERT OR REPLACE INTO llm_sessions
      (session_id, chat_id, backend, messages_json, created_at, last_activity_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(sessionId, options.chatId ?? null, options.backend, json, createdAt, now);
+  ).run(
+    sessionId,
+    options.chatId ?? null,
+    options.backend,
+    json,
+    createdAt,
+    now,
+  );
 }
 
 export function deleteSession(sessionId: string): void {
@@ -116,7 +124,8 @@ export function truncateToTokenBudget(
 
   // Walk from the END (most recent) and keep messages until we run out of budget
   for (let i = rest.length - 1; i >= 0; i--) {
-    const msgChars = rest[i].content.length + JSON.stringify(rest[i].tool_calls ?? "").length;
+    const msgChars =
+      rest[i].content.length + JSON.stringify(rest[i].tool_calls ?? "").length;
     if (totalChars + msgChars > budgetChars) break;
     kept.unshift(rest[i]);
     totalChars += msgChars;

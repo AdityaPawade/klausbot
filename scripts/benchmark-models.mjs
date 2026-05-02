@@ -29,7 +29,10 @@ const TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          name: { type: "string", description: "Short identifier for the cron" },
+          name: {
+            type: "string",
+            description: "Short identifier for the cron",
+          },
           schedule: { type: "string", description: "Cron schedule expression" },
           instruction: {
             type: "string",
@@ -50,7 +53,10 @@ const TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Natural language search query" },
+          query: {
+            type: "string",
+            description: "Natural language search query",
+          },
           limit: { type: "number", description: "Max results (default 5)" },
         },
         required: ["query"],
@@ -124,7 +130,11 @@ async function runOne(model, scenario) {
       }),
     });
   } catch (err) {
-    return { ok: false, error: `fetch failed: ${err.message}`, ms: Date.now() - t0 };
+    return {
+      ok: false,
+      error: `fetch failed: ${err.message}`,
+      ms: Date.now() - t0,
+    };
   }
   const ms = Date.now() - t0;
   if (!res.ok) {
@@ -137,7 +147,8 @@ async function runOne(model, scenario) {
   // Score it
   if (scenario.expectedTool === null) {
     // Should NOT have called a tool
-    if (!calls || calls.length === 0) return { ok: true, ms, content: content.slice(0, 80) };
+    if (!calls || calls.length === 0)
+      return { ok: true, ms, content: content.slice(0, 80) };
     return {
       ok: false,
       error: `Unexpected tool call: ${calls.map((c) => c.function.name).join(",")}`,
@@ -146,7 +157,11 @@ async function runOne(model, scenario) {
   }
 
   if (!calls || calls.length === 0) {
-    return { ok: false, error: `Expected ${scenario.expectedTool}, got plain text: ${content.slice(0, 80)}`, ms };
+    return {
+      ok: false,
+      error: `Expected ${scenario.expectedTool}, got plain text: ${content.slice(0, 80)}`,
+      ms,
+    };
   }
   const call = calls[0];
   if (call.function.name !== scenario.expectedTool) {
@@ -158,11 +173,19 @@ async function runOne(model, scenario) {
       ? safeParse(call.function.arguments)
       : call.function.arguments;
   if (!args) {
-    return { ok: false, error: `Args not parseable JSON: ${call.function.arguments}`, ms };
+    return {
+      ok: false,
+      error: `Args not parseable JSON: ${call.function.arguments}`,
+      ms,
+    };
   }
   const missing = scenario.expectedArgKeys.filter((k) => !(k in args));
   if (missing.length > 0) {
-    return { ok: false, error: `Missing required args: ${missing.join(",")} got: ${JSON.stringify(args)}`, ms };
+    return {
+      ok: false,
+      error: `Missing required args: ${missing.join(",")} got: ${JSON.stringify(args)}`,
+      ms,
+    };
   }
   return { ok: true, ms, args };
 }
@@ -196,17 +219,27 @@ async function main() {
   }
 
   console.log(`\n=== Summary ===`);
-  console.log(`${"Model".padEnd(20)} ${"Pass".padEnd(8)} ${"Fail".padEnd(8)} ${"Avg ms".padEnd(10)}`);
+  console.log(
+    `${"Model".padEnd(20)} ${"Pass".padEnd(8)} ${"Fail".padEnd(8)} ${"Avg ms".padEnd(10)}`,
+  );
   for (const [model, r] of Object.entries(results)) {
     const avg = Math.round(r.totalMs / SCENARIOS.length);
-    console.log(`${model.padEnd(20)} ${String(r.passed).padEnd(8)} ${String(r.failed).padEnd(8)} ${String(avg).padEnd(10)}`);
+    console.log(
+      `${model.padEnd(20)} ${String(r.passed).padEnd(8)} ${String(r.failed).padEnd(8)} ${String(avg).padEnd(10)}`,
+    );
   }
 
   // Pick winner: most passes, then fastest
   const ranked = Object.entries(results)
-    .map(([m, r]) => ({ model: m, score: r.passed, avgMs: r.totalMs / SCENARIOS.length }))
+    .map(([m, r]) => ({
+      model: m,
+      score: r.passed,
+      avgMs: r.totalMs / SCENARIOS.length,
+    }))
     .sort((a, b) => b.score - a.score || a.avgMs - b.avgMs);
-  console.log(`\nWINNER: ${ranked[0].model} (${ranked[0].score}/${SCENARIOS.length} passes, ${Math.round(ranked[0].avgMs)}ms avg)`);
+  console.log(
+    `\nWINNER: ${ranked[0].model} (${ranked[0].score}/${SCENARIOS.length} passes, ${Math.round(ranked[0].avgMs)}ms avg)`,
+  );
 }
 
 main().catch((err) => {
