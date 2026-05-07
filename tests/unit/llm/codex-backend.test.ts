@@ -169,6 +169,31 @@ describe("buildCodexArgs", () => {
     expect(args).toContain("--json");
   });
 
+  it("omits --sandbox and -C on the resume path (codex exec resume rejects them)", () => {
+    // Regression: previously buildCodexArgs added --sandbox and -C
+    // unconditionally, which made `codex exec resume` exit with code 2:
+    //   "error: unexpected argument '--sandbox' found"
+    // Both flags are only valid on fresh `codex exec`; the resumed session
+    // inherits the original sandbox + cwd from the thread record.
+    const args = buildCodexArgs(
+      baseCfg,
+      { resumeSessionId: "abc-123" },
+      "WRAPPED",
+    );
+    expect(args).not.toContain("--sandbox");
+    expect(args).not.toContain("-C");
+    expect(args).toContain("--skip-git-repo-check"); // still valid on resume
+  });
+
+  it("includes --sandbox and -C on the fresh exec path", () => {
+    // Sanity check — the fresh path must keep both flags.
+    const args = buildCodexArgs(baseCfg, {}, "WRAPPED");
+    expect(args).toContain("--sandbox");
+    expect(args[args.indexOf("--sandbox") + 1]).toBe("read-only");
+    expect(args).toContain("-C");
+    expect(args[args.indexOf("-C") + 1]).toBe("/home/openclaw/.klausbot");
+  });
+
   it("uses cfg.model when set", () => {
     const args = buildCodexArgs({ ...baseCfg, model: "gpt-5-codex" }, {}, "P");
     const idx = args.indexOf("-m");

@@ -140,16 +140,23 @@ export function buildCodexArgs(
   options: BackendStreamOptions,
   wrappedPrompt: string,
 ): string[] {
+  const isResume = !!options.resumeSessionId;
   const args: string[] = ["exec"];
-  if (options.resumeSessionId) {
-    args.push("resume", options.resumeSessionId);
+  if (isResume) {
+    args.push("resume", options.resumeSessionId!);
   }
   args.push("--json");
   if (cfg.skipGitRepoCheck) {
     args.push("--skip-git-repo-check");
   }
-  args.push("--sandbox", cfg.sandbox);
-  args.push("-C", cfg.cwd);
+  // --sandbox and -C are only valid on the fresh `codex exec` form, NOT on
+  // `codex exec resume` — clap rejects them with "unexpected argument".
+  // The resumed session re-uses the original sandbox + cwd recorded with
+  // the thread, which is the correct behavior anyway.
+  if (!isResume) {
+    args.push("--sandbox", cfg.sandbox);
+    args.push("-C", cfg.cwd);
+  }
 
   // IMPORTANT: ignore options.model. The dispatch layer passes the top-level
   // `model` field from klausbot.json, which is intended for Claude Code (e.g.
