@@ -27,6 +27,8 @@ import { createInterface } from "readline";
 import type { Logger } from "pino";
 import { createChildLogger } from "../utils/logger.js";
 import { KLAUSBOT_HOME } from "../memory/index.js";
+import { writeFileSync, mkdirSync } from "fs";
+import { join } from "path";
 import type {
   BackendOptions,
   BackendResponse,
@@ -500,8 +502,9 @@ async function runCodex(
       // timing + a tail of codex's stderr (its MCP startup/tool/timeout timeline via RUST_LOG) so
       // an intermittent failure is deterministically diagnosable from app.log. ---
       const looksFailed =
-        toolUseEntries.length === 0 &&
-        /could ?n.?t fetch|interrupt|timed out|no data|unable to|send .*again|once more/i.test(accumulated);
+        /could ?n.?t fetch|cancel|interrupt|timed out|no data|unable to|send .*(again|once more)/i.test(
+          accumulated,
+        );
       log[looksFailed || isError || code !== 0 ? "warn" : "info"](
         {
           duration_ms,
@@ -515,6 +518,25 @@ async function runCodex(
         },
         "codex run diagnostics",
       );
+
+      // Full codex stderr → per-run file on any failed/slow run (the app.log tail can be eaten by
+      // large challenge-page / JSON-RPC blobs). This is the authoritative trace for RCA.
+      if (looksFailed || isError || code !== 0 || duration_ms > 12000) {
+        try {
+          const dir = join(KLAUSBOT_HOME, "logs", "codex");
+          mkdirSync(dir, { recursive: true });
+          const f = join(dir, `fail-${Date.now()}-${options.chatId ?? "x"}.log`);
+          writeFileSync(
+            f,
+            `# dur_ms=${duration_ms} code=${code} looksFailed=${looksFailed} ` +
+              `tools=${JSON.stringify(toolUseEntries.map((t) => t.name))} resultBytes=${accumulated.length}\n` +
+              `# ---- result ----\n${accumulated}\n\n# ---- FULL codex stderr ----\n${stderrBuf}\n`,
+          );
+          log.warn({ file: f, duration_ms, stderrBytes: stderrBuf.length }, "codex full-stderr captured");
+        } catch {
+          /* best effort */
+        }
+      }
 
       if (rescued) {
         log.info(
