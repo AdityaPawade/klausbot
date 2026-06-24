@@ -5,6 +5,7 @@ export {
   registerSkillCommands,
   getInstalledSkillNames,
   translateSkillCommand,
+  isIsolatedSkillText,
 } from "./skills.js";
 export {
   streamClaudeResponse,

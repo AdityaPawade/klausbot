@@ -69,6 +69,36 @@ export function getSkillDescription(name: string): string {
   return name;
 }
 
+/** Skill names whose invocations must run in an ISOLATED (fresh) LLM session — declared via
+ *  `isolated: true` in SKILL.md frontmatter. Default (absent/false) = reuse the chat session. */
+const isolatedSkills = new Set<string>();
+
+/** Read a boolean frontmatter flag (e.g. `isolated: true`) from a skill's SKILL.md. */
+function getSkillFlag(name: string, key: string): boolean {
+  const skillPath = join(SKILLS_DIR, name, "SKILL.md");
+  if (!existsSync(skillPath)) return false;
+  try {
+    const content = readFileSync(skillPath, "utf-8");
+    const fm = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fm) return false;
+    const m = fm[1].match(new RegExp(`(?:^|\\n)${key}:\\s*(true|false)\\b`, "i"));
+    return m ? m[1].toLowerCase() === "true" : false;
+  } catch {
+    return false;
+  }
+}
+
+/** True if the message text invokes a skill marked `isolated: true` (run it in a fresh session,
+ *  not the reused/resumed one). Accepts the pre-translation command form (/cmd) or the
+ *  post-translation skill-name form (/skill-name). */
+export function isIsolatedSkillText(text: string): boolean {
+  const m = text.trim().match(/^\/([^\s]+)/);
+  if (!m) return false;
+  const token = m[1].toLowerCase();
+  const name = skillCommandMap.get(token) ?? token; // command → skill name, else assume it's the name
+  return isolatedSkills.has(name);
+}
+
 /**
  * Translate skill command in message text
  * Converts /skill_creator [args] → /skill-creator [args]
@@ -112,8 +142,9 @@ export async function registerSkillCommands(
   const skillNames = getInstalledSkillNames();
   log.info({ skillNames }, "Found installed skills");
 
-  // Clear and rebuild command map
+  // Clear and rebuild command map + isolated-session set
   skillCommandMap.clear();
+  isolatedSkills.clear();
 
   // Built-in commands
   const builtins: BotCommand[] = [
@@ -135,11 +166,13 @@ export async function registerSkillCommands(
       "Adding skill command",
     );
     skillCommandMap.set(sanitized, name);
+    if (getSkillFlag(name, "isolated")) isolatedSkills.add(name);
     skillCommands.push({
       command: sanitized,
       description,
     });
   }
+  log.info({ isolatedSkills: [...isolatedSkills] }, "Isolated-session skills");
 
   // Telegram limits to 100 commands
   const allCommands = [...builtins, ...skillCommands].slice(0, 100);

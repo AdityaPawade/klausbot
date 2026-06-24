@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import type { MyContext } from "../telegram/index.js";
+import { isIsolatedSkillText } from "../telegram/skills.js";
 import {
   streamToTelegram,
   canStreamToChat,
@@ -1644,10 +1645,19 @@ async function processMessage(msg: QueuedMessage): Promise<void> {
     const backgroundAgentsEnabled =
       !isBootstrap && (jsonConfig.subagents?.enabled ?? true);
 
+    // Isolated skills (e.g. /stock, declared `isolated: true` in SKILL.md) run in a FRESH session
+    // each call — no resume, not recorded — so their large/transient MCP tool calls never inherit or
+    // pollute the conversation's reused session (which is where the resumed-session cancellations hit).
+    const isolated = !isBootstrap && isIsolatedSkillText(effectiveText);
+    if (isolated) {
+      log.info({ chatId: msg.chatId }, "Isolated skill — fresh session (no resume, not recorded)");
+    }
+
     // Check for resumable session — if found, Claude already has full context
-    const resumeSessionId = isBootstrap
-      ? undefined
-      : (getResumableSession(msg.chatId) ?? undefined);
+    const resumeSessionId =
+      isBootstrap || isolated
+        ? undefined
+        : (getResumableSession(msg.chatId) ?? undefined);
 
     if (resumeSessionId) {
       log.info(
@@ -1765,7 +1775,7 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
         // Handle rescued streaming response
         if (streamResult.rescued && streamRescueHandle && rescueMonitor) {
           // Record session even on rescue — process is still running with this session
-          if (streamResult.session_id) {
+          if (!isolated && streamResult.session_id) {
             recordSession(msg.chatId, streamResult.session_id);
           }
           queue.complete(msg.id);
@@ -1835,7 +1845,7 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
         }
 
         // Record session for future --resume continuity
-        if (streamResult.session_id) {
+        if (!isolated && streamResult.session_id) {
           recordSession(msg.chatId, streamResult.session_id);
         }
 
@@ -1955,7 +1965,7 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
     // Handle rescued response — send partial, register with monitor, unblock queue
     if (response.rescued && rescueHandle && rescueMonitor) {
       // Record session even on rescue — process is still running with this session
-      if (response.session_id) {
+      if (!isolated && response.session_id) {
         recordSession(msg.chatId, response.session_id);
       }
       queue.complete(msg.id);
@@ -2007,7 +2017,7 @@ Use this chatId when creating cron jobs or background tasks.${projectContext}
     }
 
     // Record session for future --resume continuity
-    if (response.session_id) {
+    if (!isolated && response.session_id) {
       recordSession(msg.chatId, response.session_id);
     }
 
