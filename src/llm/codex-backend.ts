@@ -321,8 +321,10 @@ async function runCodex(
     // invisible to us). Keep it focused — suppress the HTTP/OTEL/JSON-RPC-passthrough noise. Captured
     // on close below so an intermittent "couldn't fetch" is deterministically traceable.
     if (!env.RUST_LOG) {
-      env.RUST_LOG =
-        "warn,codex_core=info,codex_exec=info,codex_rmcp_client=info,codex_rmcp_client::stdio_server_launcher=warn";
+      // Include the mcp-remote round-trip (stdio_server_launcher) so we can see whether the algostonk
+      // tools/call reached trading.algostonk.com and what came back. Verbose, but it lands in the
+      // per-run fail-*.log file, not app.log.
+      env.RUST_LOG = "warn,codex_core=info,codex_exec=info,codex_rmcp_client=info";
     }
 
     const proc = spawn(cfg.binary, args, {
