@@ -315,6 +315,13 @@ async function runCodex(
     if (options.chatId !== undefined) {
       env.KLAUSBOT_CHAT_ID = String(options.chatId);
     }
+    // Diagnostics: make codex emit its MCP startup / tool-call / timeout timeline to stderr (otherwise
+    // invisible to us). Keep it focused — suppress the HTTP/OTEL/JSON-RPC-passthrough noise. Captured
+    // on close below so an intermittent "couldn't fetch" is deterministically traceable.
+    if (!env.RUST_LOG) {
+      env.RUST_LOG =
+        "warn,codex_core=info,codex_exec=info,codex_rmcp_client=info,codex_rmcp_client::stdio_server_launcher=warn";
+    }
 
     const proc = spawn(cfg.binary, args, {
       // stdio[0] = "ignore" so codex doesn't try to read additional input
@@ -487,6 +494,27 @@ async function runCodex(
       };
 
       if (resolveCompletion) resolveCompletion(final);
+
+      // --- Diagnostics: codex exits 0 even when it internally interrupts a tool call (the
+      // "couldn't fetch / interrupted" case), so the error paths below never see it. Always log
+      // timing + a tail of codex's stderr (its MCP startup/tool/timeout timeline via RUST_LOG) so
+      // an intermittent failure is deterministically diagnosable from app.log. ---
+      const looksFailed =
+        toolUseEntries.length === 0 &&
+        /could ?n.?t fetch|interrupt|timed out|no data|unable to|send .*again|once more/i.test(accumulated);
+      log[looksFailed || isError || code !== 0 ? "warn" : "info"](
+        {
+          duration_ms,
+          code,
+          timedOut,
+          rescued,
+          toolCalls: toolUseEntries.map((t) => t.name),
+          resultBytes: accumulated.length,
+          looksFailed,
+          stderrTail: stderrBuf.slice(-6000),
+        },
+        "codex run diagnostics",
+      );
 
       if (rescued) {
         log.info(
