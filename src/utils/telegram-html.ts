@@ -45,7 +45,7 @@ md.renderer.rules.paragraph_open = (_tokens, idx) => {
 md.renderer.rules.paragraph_close = (_tokens, idx) => {
   if (idx + 1 < _tokens.length && _tokens[idx + 1].type === "list_item_close")
     return "";
-  return "\n";
+  return "\n\n";  // blank line between paragraphs so section spacing survives in Telegram
 };
 
 md.renderer.rules.blockquote_open = () => "<blockquote>";

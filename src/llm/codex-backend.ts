@@ -443,6 +443,9 @@ async function runCodex(
             item.type === "local_shell_call" ||
             item.type === "mcp_tool_call"
           ) {
+            // Drop any pre-tool-call "preamble" narration; keep only the final answer the model
+            // produces after the last tool call (stops "Pulling the trade-card…" from leaking).
+            accumulated = "";
             const name = item.name ?? item.type;
             let parsedArgs: Record<string, unknown> = {};
             if (item.arguments) {
